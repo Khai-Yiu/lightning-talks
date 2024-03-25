@@ -1,0 +1,38 @@
+
+body {
+    background-color: #242730;
+}
+  
+section {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20em;
+    height: 15em;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    border-style: solid, black;
+    border-radius: 20px;
+    outline:auto;
+    background-color: #202228;
+}
+
+section h1 {
+    transform: translate(0%, -30%);
+    font-size: 5em;
+    color: white;
+}
+
+section button {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    font-size: 1.5em;
+    font-family: monospace;
+    font-weight: bold;
+    background-color: rgb(89, 180, 89);
+    width: 10em;
+    height: 4em;
+    border-style: solid;
+    border-radius: 10px;
+    border-color: rgb(52, 173, 52);
+}
