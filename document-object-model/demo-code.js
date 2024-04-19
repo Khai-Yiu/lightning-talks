@@ -5,7 +5,7 @@ function printTree(node, spacing) {
     if (text !== "") {
       console.log(`${spacing}${text}`);
     }
-  } else {
+  } else if (node.nodeType === Node.ELEMENT_NODE) {
     console.log(`${spacing}<${node.nodeName.toLowerCase()}>`);
     if (node.firstChild) {
       printTree(node.firstChild, spacing + "    ");
