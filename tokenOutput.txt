@@ -1,0 +1,5 @@
+"Token { type: Local, lexeme: 'local', value: null, line: 1 }"
+"Token { type: Identifier, lexeme: 'x', value: null, line: 1 }"
+"Token { type: Assign, lexeme: '=', value: null, line: 1 }"
+"Token { type: NumberLiteral, lexeme: '20', value: 20, line: 1 }"
+"Token { type: EOF, lexeme: '20', value: null, line: 1 }"
