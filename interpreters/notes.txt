@@ -1,4 +1,0 @@
-https://2am.tech/blog/building-a-language-interpreter-in-javascript/
-https://crockford.com/javascript/tdop/tdop.html
-https://renesd.blogspot.com/2010/07/lets-make-shit-javascript-interpreter.html
-https://daily.dev/blog/javascript-interpreter-basics-for-developers#:~:text=JavaScript%20interpreters%20are%20built%20into,code%20changes%20in%20real%2Dtime.

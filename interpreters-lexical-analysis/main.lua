@@ -1,1 +1,3 @@
-local x = "Hello"
+local _xa = 012
+
+print(_xa)

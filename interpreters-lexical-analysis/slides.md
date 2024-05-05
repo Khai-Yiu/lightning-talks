@@ -606,6 +606,24 @@ Invalid character "0" at line 1
 18      );
 19  }
 ```
+---
+### Recognising digits
+
++ Alternative is to make cases for 0 to 9
+
+```JavaScript
+default:
+    if (isDigit(currentCharacter)) {
+        number();
+    } else {
+        // Error handling
+    }
+```
+```JavaScript
+function isDigit(c) {
+    return c >= '0' && c <= '9';
+}
+```
 
 ---
 <style scoped>
@@ -635,6 +653,34 @@ Invalid character "0" at line 1
 17      );
 18  }
 ```
+---
+### Differentiate between Identifiers and Reserved Keywords
+
+* A reserved word IS an identifier, just claimed by the language
+* Apply longest match principle and consume whole lexeme
+* Use a pre-defined map of reserved words to compare against the lexeme
+* If lexeme exists in the map, create corresponding reserved token
+* Else, create IDENTIFIER token
+---
+### Variable name rules
+
++ Starts with a letter or underscore
++ Can contain letters, digits and underscores
+
+
+---
+### Recognising Identifiers and Reserved Words
+
+```JavaScript
+default:
+    if (isDigit(currentCharacter)) {
+        number();
+    } else if (isAlpha(currentCharacter)) {
+        identifier();
+    } else {
+        // Error handling
+    }
+```
 
 ---
 <style scoped>
@@ -657,4 +703,21 @@ Invalid character "0" at line 1
 10      const type = reservedKeywords[value] ?? IDENTIFIER;
 11      addToken(type);
 12  }
+```
+
+---
+### Checking for alpha numerics
+
+```JavaScript
+function isVariable(c) {
+    return (c >= 'a' && c <= 'z') ||
+           (c >= 'A' && c <= 'Z') ||
+            c == '_';
+}
+```
+
+```JavaScript
+function isAlphaNumeric(c) {
+    return isAlpha(c) || isDigit(c);
+}
 ```
