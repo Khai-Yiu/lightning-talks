@@ -55,11 +55,25 @@ style: |
 #### Khai-Yiu Soh
 
 ---
+### Overview
+
++ Introduction to interpreters
++ Lexical analysis
++ Walkthrough of Lua tokeniser implemented in JS
+
+---
+<style scoped>
+  img {
+    border-radius: 30px;
+  }
+</style>
 ### What are interpreters?
 
-+ For any language, source code must be translated to binary code before the computer can execute it
-+ Interpreters are one of these translation processes
-+ A program that executes code line by line without prior compilation
++ A program that translates and executes code line by line without prior compilation
++ For any language, source code must be translated to machine code before the CPU can execute it
++ Interpreters are one form of translation, other than compilers and assemblers
+
+![w:700 center drop-shadow:0,5px,10px,rgb(0,0,0)](Images/Interpreters.png)
 
 ---
 <style scoped>
@@ -73,7 +87,7 @@ style: |
 
 + No intermediate object code generated
 + Less memory required
-+ Relatively slower, converts high-level to low-level language every time
++ Slower, converts high-level to low-level language every time
 + Detect errors immediately
 
 <div class="image-container">
@@ -100,18 +114,17 @@ style: |
   + Constructs Abstract Syntax Tree
 + Semantic Analysis:
   + Checks for logical errors, type declarations, scoping, etc.
-+ Evaluation:
-  + Traverse AST and produce program output
++ Execution:
+  + Interpret and execute program logic represented by AST
 
 ---
 ### Writing lexer for Lua
 
-+ Identify syntax: Rules for identifiers, keywords, operators, literals, etc.
++ Identify syntax: Keywords, operators, etc.
   + https://hackage.haskell.org/package/language-lua-0.11.0.1/docs/Language-Lua-Token.html
-+ Tokenisation strategy: Character by character, matching with regex
-  + Massive switch case
++ Tokenisation strategy: Iterating source code and matching with switch case
+  + Others: Regular expressions, Lex/Flex tools
 + Error handling: Invalid characters, unterminated strings or comments
-+ Not concerned with grammar at this stage
 
 ---
 <style scoped>
@@ -230,7 +243,7 @@ function Token(type, lexeme, value, line) {
 ### Non-useful lexemes
 
 + Don't provide any benefit to the parser
-+ Ignore comments **--**, comment blocks **--[[ --]]**
++ Ignore comments **--**, comment blocks **--[[ ]]**
 + Ignore white space
 + Ignore newlines **\n**, tabs **\t**, carriage returns **\r**
 
@@ -283,7 +296,7 @@ function Lexer(sourceCode) {
 
 ```JavaScript
 1   function advance() {
-2       currentCharacter = sourceCode[currentPosition]
+2       const currentCharacter = sourceCode[currentPosition]
 3       currentPosition++;
 4
 5       return currentCharacter;
@@ -296,6 +309,8 @@ function Lexer(sourceCode) {
 
 ---
 ### Iterating source code
+
++ **tokenise** called for every lexeme
 
 ```JavaScript
 1   function scanTokens() {
@@ -322,6 +337,21 @@ function Lexer(sourceCode) {
 7               break;
 8           // A lot more cases
 9       }
+10  }
+```
+---
+### Ignore cases
+
+```JavaScript
+1   switch (currentCharacter) {
+2       ...
+3       case " ":   break;
+4       case "\r":  break;
+5       case "\t":  break;
+6       case "\n":
+7           currentLine++;
+8           break;
+9       ...
 10  }
 ```
 ---
@@ -372,6 +402,9 @@ switch (currentCharacter) {
 ---
 ### Errors
 
++ Keep scanning even after encountering an error
++ Better to detect all the errors in one execution
+
 ```JavaScript
 switch (currentCharacter) {
     ...
@@ -381,10 +414,15 @@ switch (currentCharacter) {
 }
 ```
 ---
+<style scoped>
+  code {
+    font-size: 24px;
+  }
+</style>
 ### Current output
 
 ```Lua
-local x = 20
+local x = (10 == 20)
 ```
 ```JavaScript
 Invalid character "l" at line 1
@@ -393,9 +431,15 @@ Invalid character "c" at line 1
 Invalid character "a" at line 1
 Invalid character "l" at line 1
 Invalid character "x" at line 1
-Token { type: ASSIGN, lexeme: "=", value: null, line: 1 }
+Token { type: ASSIGN,      lexeme: "=", value: null, line: 1 }
+Token { type: LEFT_PAREN,  lexeme: "(",  value: null, line: 1 }
+Invalid character "1" at line 1
+Invalid character "0" at line 1
+Token { type: ASSIGN,      lexeme: "=", value: null, line: 1 }
+Token { type: ASSIGN,      lexeme: "=", value: null, line: 1 }
 Invalid character "2" at line 1
 Invalid character "0" at line 1
+Token { type: RIGHT_PAREN, lexeme: ")", value: null, line: 1 }
 ```
 
 ---
@@ -409,7 +453,7 @@ Invalid character "0" at line 1
 -- Current implementation generates 3 Assign tokens
 -- Goal: 1 Assign and 1 Equal token
 
-local x = 20 == 10
+local x = (20 == 10)
 ```
 
 ---
@@ -422,7 +466,7 @@ local x = 20 == 10
 2       const endSlicePosition = currentPosition + charactersToMatch.length;
 3       const nextCharacters = sourceCode.slice(currentPosition, endSlicePosition)
 4    
-5       if (isEndOfFile() || nextCharacters !== charactersToMatch) {
+5       if (nextCharacters !== charactersToMatch) {
 6           return false;
 7       }
 8
@@ -449,10 +493,15 @@ local x = 20 == 10
 ```
 
 ---
+<style scoped>
+  code {
+    font-size: 24px;
+  }
+</style>
 ### Current output
 
 ```Lua
-local x = 10 == 20
+local x = (10 == 20)
 ```
 ```JavaScript
 Invalid character "l" at line 1
@@ -461,12 +510,14 @@ Invalid character "c" at line 1
 Invalid character "a" at line 1
 Invalid character "l" at line 1
 Invalid character "x" at line 1
-Token { type: ASSIGN, lexeme: "=", value: null, line: 1 }
+Token { type: ASSIGN,      lexeme: "=",  value: null, line: 1 }
+Token { type: LEFT_PAREN,  lexeme: "(",  value: null, line: 1 }
 Invalid character "1" at line 1
 Invalid character "0" at line 1
-Token { type: EQUAL, lexeme: "==", value: null, line: 1 }
+Token { type: EQUAL,       lexeme: "==", value: null, line: 1 }
 Invalid character "2" at line 1
 Invalid character "0" at line 1
+Token { type: RIGHT_PAREN, lexeme: ")",  value: null, line: 1 }
 ```
 
 ---
@@ -477,7 +528,7 @@ Invalid character "0" at line 1
 + Comments: **-- \n**
 
   + Ex. -- This is a comment\n
-+ Comment blocks:  **--[[ --]]**
++ Comment blocks:  **--[[ ]]**
 + Strings: **""** or **''**
 + Numbers: (loop while checking if character is digit)
   + Ex. local x = **123456789**
@@ -497,27 +548,26 @@ Invalid character "0" at line 1
 ---
 ### Peek
 
-+ Modified to peek an arbitrary number of characters
++ Peek after an arbitrary number of characters
 
 ```JavaScript
-1  function peek(charactersToLookAhead = 0) {
-2      if (currentPosition + charactersToLookAhead >= sourceCode.length) {
+1  function peek(extraCharsToLookAhead = 0) {
+2      if (currentPosition + extraCharsToLookAhead >= sourceCode.length) {
 3          return "\0";
 4      }
 5
-6      return sourceCode[currentPosition + charactersToLookAhead];
+6      return sourceCode[currentPosition + extraCharsToLookAhead];
 7  }
 ```
 
 ---
 ### Comments
 
-+ Keep advancing until the comment lexeme is consumed
 + Terminating character: \n
 
 ```JavaScript
-1  function comment() {
-2      while (peek() !== "\n" && !isEndOfFile()) {
+1  function readComment() {
+2      while (peek() !== "\n") {
 3         advance();
 4      }
 5  }
@@ -526,28 +576,34 @@ Invalid character "0" at line 1
 ---
 <style scoped>
   code {
-    font-size: 22px;
+    font-size: 19px;
   }
 </style>
 ### Comment Blocks
 
-+ Keep advancing until comment block lexeme is consumed
-+ Terminating characters: --]]
++ Terminating characters: ]]
 
 ```JavaScript
-1   function commentBlock() {
-2       while (!matchNext('--]]')) {
+1   function readCommentBlock() {
+2       while (!(peek() === ']' && peek(1) === ']') && !isEndOfFile()) {
 3           if (peek() === '\n') {
 4               currentLine++;
-5           } else if (isEndOfFile()) {
-6               throw new Error(
-7                   `Unterminated comment block at line ${this.currentLine}`,
-8               );
-9           }
-10
-11          advance();
-12      }
-13  }
+5           }
+6
+7           advance();
+8       }
+9
+10      if (isEndOfFile()) {
+11            console.log(
+12                `Unterminated comment block at line ${this.currentLine}`,
+13            );
+14
+15            return;
+16        }
+17
+18        advance();
+19        advance();
+20  }    
 ```
 
 ---
@@ -565,9 +621,9 @@ Invalid character "0" at line 1
 
 ```JavaScript
 1 if (matchNext('-[[')) {
-2       commentBlock();
+2       readCommentBlock();
 3  } else if (matchNext('-')) {
-4      comment();
+4      readComment();
 5  } else {
 6      addToken(MINUS);  
 7  }
@@ -586,25 +642,23 @@ Invalid character "0" at line 1
 + Terminating character: " or '
 
 ```JavaScript
-1   function string(quoteType) {
-2       while (peek() !== quoteType && !isEndOfFile()) {
-3           if (peek() === '\n') {
-4               throw new Error(`Unterminated string at line ${currentLine}`);
-5           }
-6
+1   function readString(quoteType) {
+2       while (peek() !== quoteType && peek() !== '\n' && !isEndOfFile()) {
 7           advance();
 8       }
 9
-10      if (isEndOfFile()) {
-11          throw new Error(`Unterminated string at line ${currentLine}`);
-12      }
-13
-14      advance();
-15      addToken(
-16          STRING,
-17          sourceCode.slice(startPosition + 1, currentPosition - 1),
-18      );
-19  }
+10      if (peek() === '\n' || isEndOfFile()) {
+11          console.log(`Unterminated string at line ${currentLine}`);
+12
+13          return;
+14      }
+15
+16      advance();
+17      addToken(
+18          STRING,
+19          sourceCode.slice(startPosition + 1, currentPosition - 1),
+20      );
+21  }
 ```
 ---
 ### Recognising digits
@@ -614,7 +668,7 @@ Invalid character "0" at line 1
 ```JavaScript
 default:
     if (isDigit(currentCharacter)) {
-        number();
+        readNumber();
     } else {
         // Error handling
     }
@@ -628,13 +682,15 @@ function isDigit(c) {
 ---
 <style scoped>
   code {
-    font-size: 22px;
+    font-size: 20px;
   }
 </style>
 ### Digits
 
++ Check for decimal numbers as well
+
 ```JavaScript
-1   function number() {
+1   function readNumber() {
 2       while (isDigit(peek())) {
 3           advance();
 4       }
@@ -661,22 +717,43 @@ function isDigit(c) {
 * Use a pre-defined map of reserved words to compare against the lexeme
 * If lexeme exists in the map, create corresponding reserved token
 * Else, create IDENTIFIER token
+
 ---
+<style scoped>
+  code {
+    font-size: 25px;
+  }
+</style>
 ### Variable name rules
 
-+ Starts with a letter or underscore
++ Starts with a letter or underscore (no digits)
 + Can contain letters, digits and underscores
++ Can't be a reserved keyword
 
+```JavaScript
+function isAlpha(c) {
+    return (c >= 'a' && c <= 'z') ||
+           (c >= 'A' && c <= 'Z') ||
+            c == '_';
+}
+```
+```JavaScript
+function isAlphaNumeric(c) {
+    return isAlpha(c) || isDigit(c);
+}
+```
 
 ---
 ### Recognising Identifiers and Reserved Words
 
++ Alternative is to make cases for a-z, A-Z and _
+
 ```JavaScript
 default:
     if (isDigit(currentCharacter)) {
-        number();
+        readNumber();
     } else if (isAlpha(currentCharacter)) {
-        identifier();
+        readIdentifier();
     } else {
         // Error handling
     }
@@ -690,34 +767,61 @@ default:
 </style>
 ### Identifiers and Reserved words
 
++ Token is either IDENTIFIER or a specific reserved keyword if it exists
+
 ```JavaScript
-1   function identifier() {
+1   function readIdentifier() {
 2       while (isAlphaNumeric(peek())) {
 3           advance();
 4       }
 5
-6       const value = sourceCode.slice(
+6       const lexeme = sourceCode.slice(
 7           startPosition,
 8           currentPosition,
 9       );
-10      const type = reservedKeywords[value] ?? IDENTIFIER;
+10      const type = reservedKeywords[lexeme] ?? IDENTIFIER;
 11      addToken(type);
 12  }
 ```
+---
+### Current output
+
+```Lua
+local x = (10 == 20)
+```
+```JavaScript
+Token { type: LOCAL,       lexeme: "local", value: null, line: 1 }
+Token { type: IDENTIFIER,  lexeme: "x",     value: null, line: 1 }
+Token { type: ASSIGN,      lexeme: "=",     value: null, line: 1 }
+Token { type: LEFT_PAREN,  lexeme: "(",     value: null, line: 1 }
+Token { type: NUMBER,      lexeme: "10",    value: 10,   line: 1 }
+Token { type: EQUAL,       lexeme: "==",    value: null, line: 1 }
+Token { type: NUMBER,      lexeme: "20",    value: 20,   line: 1 }
+Token { type: RIGHT_PAREN, lexeme: ")",     value: null, line: 1 }
+```
+---
+### Is this valid?
+
+```JavaScript
+10 x = + y 20 local
+```
+
++ Lexical analysis is not concerned with language's grammar
++ Also not concerned with semantics (scope, declarations, types, etc.)
++ Simply break down input into tokens based on specification
 
 ---
-### Checking for alpha numerics
+### Future
 
-```JavaScript
-function isVariable(c) {
-    return (c >= 'a' && c <= 'z') ||
-           (c >= 'A' && c <= 'Z') ||
-            c == '_';
-}
-```
++ Syntactic analysis:
 
-```JavaScript
-function isAlphaNumeric(c) {
-    return isAlpha(c) || isDigit(c);
-}
-```
+  + Build grammar rules based off tokens produced
+  + Verify valid expressions, statements and program structures
+  + Built a syntax tree to represent the hierarchical structure of the program
+
+---
+### Resources
+
++ Crafting Interpreters
+
+  + https://timothya.com/pdfs/crafting-interpreters.pdf

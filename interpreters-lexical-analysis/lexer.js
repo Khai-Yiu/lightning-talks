@@ -12,8 +12,15 @@ function Lexer(sourceCode) {
             this.startPosition = this.currentPosition;
             this.tokenise();
         }
+  
+        const newToken = new Token(
+            tokenType.EOF,
+            "\0",
+            null,
+            this.currentLine,
+        );
 
-        this.addToken(tokenType.EOF);
+        this.tokenList.push(newToken);
 
         return this.tokenList;
     };
@@ -106,24 +113,22 @@ function Lexer(sourceCode) {
                 break;
             case '\t':
                 break;
-            case '\t':
-                break;
             case '\n':
                 this.currentLine++;
                 break;
             case '"':
-                this.string('"');
+                this.readString('"');
                 break;
             case "'":
-                this.string("'");
+                this.readString("'");
                 break;
             default:
                 if (isDigit(currentCharacter)) {
-                    this.number();
+                    this.readNumber();
                 } else if (isAlpha(currentCharacter)) {
-                    this.identifier();
+                    this.readIdentifier();
                 } else {
-                    throw new Error(
+                    console.log(
                         `Invalid character at line ${this.currentLine}`,
                     );
                 }
@@ -216,35 +221,41 @@ function Lexer(sourceCode) {
 
     this.handleMinusCase = function () {
         if (this.matchNext('-[[')) {
-            this.commentBlock();
+            this.readCommentBlock();
         } else if (this.matchNext('-')) {
-            this.comment();
+            this.readComment();
         } else {
             this.addToken(tokenType.MINUS);
         }
     };
 
-    this.commentBlock = function () {
-        while (!this.matchNext('--]]')) {
+    this.readCommentBlock = function () {
+        while (!this.matchNext(']]') && !this.isEndOfFile()) {
             if (this.peek() === '\n') {
                 this.currentLine++;
-            } else if (this.isEndOfFile()) {
-                throw new Error(
-                    `Unterminated comment block at line ${this.currentLine}`,
-                );
             }
 
             this.advance();
         }
+
+        if (this.isEndOfFile()) {
+            console.log(
+                `Unterminated comment block at line ${this.currentLine}`
+            );
+
+            return;
+        }
+
+        this.advance();
     };
 
-    this.comment = function () {
-        while (this.peek() !== '\n' && !this.isEndOfFile()) {
+    this.readComment = function () {
+        while (this.peek() !== '\n') {
             this.advance();
         }
     };
 
-    this.identifier = function () {
+    this.readIdentifier = function () {
         while (isAlphaNumeric(this.peek())) {
             this.advance();
         }
@@ -257,7 +268,7 @@ function Lexer(sourceCode) {
         this.addToken(type);
     };
 
-    this.number = function () {
+    this.readNumber = function () {
         while (isDigit(this.peek())) {
             this.advance();
         }
@@ -278,21 +289,17 @@ function Lexer(sourceCode) {
         );
     };
 
-    this.string = function (quoteType) {
-        while (this.peek() !== quoteType && !this.isEndOfFile()) {
-            if (this.peek() === '\n') {
-                throw new Error(
-                    `Unterminated string at line ${this.currentLine}`,
-                );
-            }
-
+    this.readString = function (quoteType) {
+        while (this.peek() !== quoteType && this.peek() !== "\n" && !this.isEndOfFile()) {
             this.advance();
         }
 
-        if (this.isEndOfFile()) {
-            throw new Error(`Unterminated string at line ${this.currentLine}`);
-        }
+        if (this.peek() === "\n" || this.isEndOfFile()) {
+            console.log(`Unterminated string at line ${this.currentLine}`);
 
+            return;
+        }       
+  
         this.advance();
         this.addToken(
             tokenType.STRING,
