@@ -230,7 +230,7 @@ function Lexer(sourceCode) {
     };
 
     this.readCommentBlock = function () {
-        while (!this.matchNext(']]') && !this.isEndOfFile()) {
+        while (!(this.peek() === ']' && this.peek(1) === ']') && !this.isEndOfFile()) {
             if (this.peek() === '\n') {
                 this.currentLine++;
             }
@@ -246,6 +246,7 @@ function Lexer(sourceCode) {
             return;
         }
 
+        this.advance();
         this.advance();
     };
 
@@ -314,15 +315,11 @@ function Lexer(sourceCode) {
 // HELPER METHODS
 
 function isAlpha(character) {
-    return (
-        (character >= 'a' && character <= 'z') ||
-        (character >= 'A' && character <= 'Z') ||
-        character === '_'
-    );
+    return /^[a-zA-Z_]$/.test(character);
 }
 
 function isDigit(character) {
-    return character >= '0' && character <= '9';
+    return /^\d$/.test(character);
 }
 
 function isAlphaNumeric(character) {

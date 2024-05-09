@@ -512,28 +512,10 @@ Token { type: LEFT_BRACKET, lexeme: "[", value: null, line: 95 }
 Token { type: NUMBER, lexeme: "1", value: 1, line: 95 }
 Token { type: RIGHT_BRACET, lexeme: "]", value: null, line: 95 }
 Token { type: EQUAL, lexeme: "==", value: null, line: 95 }
-Token { type: STRING, lexeme: "\"O\"", value: "O", line: 95 }
-Token { type: AND, lexeme: "and", value: null, line: 95 }
-Token { type: IDENTIFIER, lexeme: "board", value: null, line: 95 }
-Token { type: LEFT_BRACKET, lexeme: "[", value: null, line: 95 }
-Token { type: NUMBER, lexeme: "1", value: 1, line: 95 }
-Token { type: RIGHT_BRACET, lexeme: "]", value: null, line: 95 }
-Token { type: LEFT_BRACKET, lexeme: "[", value: null, line: 95 }
-Token { type: NUMBER, lexeme: "3", value: 3, line: 95 }
-Token { type: RIGHT_BRACET, lexeme: "]", value: null, line: 95 }
-Token { type: EQUAL, lexeme: "==", value: null, line: 95 }
-Token { type: STRING, lexeme: "\"O\"", value: "O", line: 95 }
-Token { type: AND, lexeme: "and", value: null, line: 95 }
-Token { type: IDENTIFIER, lexeme: "board", value: null, line: 95 }
-Token { type: LEFT_BRACKET, lexeme: "[", value: null, line: 95 }
-Token { type: NUMBER, lexeme: "1", value: 1, line: 95 }
-Token { type: RIGHT_BRACET, lexeme: "]", value: null, line: 95 }
-Token { type: LEFT_BRACKET, lexeme: "[", value: null, line: 95 }
-Token { type: NUMBER, lexeme: "5", value: 5, line: 95 }
-Token { type: RIGHT_BRACET, lexeme: "]", value: null, line: 95 }
-Token { type: EQUAL, lexeme: "==", value: null, line: 95 }
-Token { type: STRING, lexeme: "\"O\"", value: "O", line: 95 }
-Token { type: THEN, lexeme: "then", value: null, line: 95 }
+Token { type: STRING, lexeme: "\"O and board[1][3] == \"", value: "O and board[1][3] == ", line: 95 }
+Token { type: IDENTIFIER, lexeme: "O", value: null, line: 95 }
+Token { type: STRING, lexeme: "\" and board[1][5] == \"", value: " and board[1][5] == ", line: 95 }
+Token { type: IDENTIFIER, lexeme: "O", value: null, line: 95 }
 Token { type: IDENTIFIER, lexeme: "win1", value: null, line: 96 }
 Token { type: ASSIGN, lexeme: "=", value: null, line: 96 }
 Token { type: TRUE, lexeme: "true", value: null, line: 96 }
