@@ -1,0 +1,1 @@
+local x<const>, y<volatile> = 10, 20
