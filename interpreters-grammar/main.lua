@@ -1,1 +1,1 @@
-local x<const>, y<volatile> = 10, 20
+print((2 + 3) * 4 > 10)

@@ -1,0 +1,54 @@
+chunk            --> block ;
+block            --> (statement)* returnStatement? ;
+
+statement        --> variableList '=' expressionList |
+                     'local' attrVarList ('=' expressionList)? |
+
+                     'if' expression 'then' block 
+                     ('elseif' expression 'then' block)*
+                     ('else' block)? 
+                     'end' |
+
+                     'while' expression 'do' block 'end' | 
+                     'repeat' block 'until' expression |
+
+                     'for' identifier '=' expression ',' expression
+                     (',' expression)?
+                     'do' block 'end' |
+
+                     'for' identifierList 'in' expressionList 'do' block 'end' |
+
+                     functionCall |
+                     'function' functionName body |
+                     'local function' identifier body ;
+
+variableList     --> variable (',' variable)* ;
+expressionList   --> expression (',' expression)* ;
+identifierList   --> identifier (',' identifier)* ;
+attrVarList      --> identifier attribute (',' identifier attribute)* ;
+attribute        --> ('<' identifier '>')? ;
+prefixExpression --> variable | functionCall | '(' expression ')'
+variable         --> identifier | 
+                     prefixExpression '[' expression ']' | 
+                     prefixExpression '.' identifier ;
+functionCall     --> prefixExpression arguments | 
+                     prefixExpression ':' identifier arguments ;
+arguments        --> '(' expressionList? ')' ;
+functionName     --> identifier ('.' identifier)* (':' identifier)? ;
+body             --> '(' (parameterList)? ')' block 'end' ;
+parameterList    --> identifierList (',' '...')? | '...' ;
+
+expression       --> logicalOr ;
+logicalOr        --> logicalAnd ("or" logicalAnd)* ;
+logicalAnd       --> comparison ("and" comparison)* ;
+comparison       --> bitwiseOr (( "==" | "~=" | ">" | ">=" | "<" | "<=" ) bitwiseOr)* ;
+bitwiseOr        --> bitwiseXor ( "|" bitwiseXor )* ;
+bitwiseXor       --> bitwiseAnd ( "~" bitwiseAnd )* ;
+bitwiseAnd       --> shift ( "&" shift )* ;
+shift            --> concatenation (( "<<" | ">>" ) concatenation)* ;
+concatenation    --> term ( ".." concatenation )* ;
+term             --> factor (( "+" | "-" ) factor)* ;
+factor           --> unary (( "*" | "/" | "//" | "%" ) unary)* ;
+unary            --> ( "-" | "not" | "#" | "~" ) unary | power ;
+power            --> primary ("^" power)* ;
+primary          --> NUMBER | STRING | "true" | "false" | "nil" | functionDef | table | prefixExpression ;

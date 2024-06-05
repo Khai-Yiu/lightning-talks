@@ -55,19 +55,36 @@ style: |
 #### Khai-Yiu Soh
 
 ---
-### What is Context Free Grammar?
+### Overview
+
++ Introduction to Context Free Grammar
++ Defining CFG rules for Lua
 
 ---
-### Regular vs Context Free
+### What is Context Free Grammar?
+
++ A formal grammar for defining the syntax of a language
++ Consists of a set of rules describing all possible strings
++ Need to establish the syntax rules before implementation
++ Create recursive descent parser
+
+  + Simple to implement
+  + Directly map rules to parsing functions
 
 ---
 ### Components of CFG
 
-+ head
-+ body
-    + terminal
-    + nonterminal
++ **Production rules:** Rules combining terminals and non-terminals
++ **Terminals:** The basic "alphabet" which forms strings
 
+  + Letters form words, words form sentences
+  + Tokens form the grammar of the programming language
++ **Non-terminals:** A named reference to another rule to compose grammar
+
+  + S --> 'a'A ;
+  + A --> 'b' | 'c' ;
++ **Start symbol:** Represents the language, root of the production process
++ Other symbols: **|**, **?**, _*_
 ---
 ### Example
 
@@ -87,6 +104,31 @@ statement  --> ?? ;
 expression --> ?? ;
 ```
 ---
+### Regular vs Context Free
+
++ A regular language can be described by regular expressions
++ Regular expressions are sequences of characters defining a pattern
++ Don't use extra memory apart from knowing its current state
++ Context-free languages can be described with CFG
++ May use additional memory (stack to track recursive structures)
+
+---
+### Balanced Parentheses Example
+
+![w:700 center drop-shadow:0,5px,10px,rgb(0,0,0)](Images/StateDiagrams.png)
+
+---
+### Usage in interpreters
+
++ Tokenisation involves matching the substrings with a specific pattern
++ The lexical structure is regular, it can be defined with regular expressions
++ Parsing analyses the structure of the program
+
+  + Conditional statements
+  + Loops
+  + Function calls
++ CFGs being more expressive, can describe nested structures of arbitrary depth
+---
 ### Expressions and statements
 
 + An expression is evaluated to produce a value
@@ -104,7 +146,6 @@ expression --> ?? ;
 ---
 ### Statements
 
-+ There are many types of statements to consider
 + Define a set of grammar rules for:
   
   + Variable assignments / declarations
@@ -118,13 +159,33 @@ expression --> ?? ;
 + There are global, local variables and table fields
 + An identifier represents a variable (`myTable`, `x`, `_variable`)
 + Square brackets are used to index a table (`myTable["key"]`, `myTable[2]`)
-+ Using "." is analogous to using square brackets (`myTable.key`)
++ Can also use "." syntax (`myTable.key`)
++ Can index the result of a variable, result of function call or another table
 
 ```Bash
-variable --> identifier | 
-             prefixExpression '[' expression ']' | 
-             prefixExpression '.' identifier ;
+variable         --> identifier | 
+                     prefixExpression '[' expression ']' | 
+                     prefixExpression '.' identifier ;
 
+prefixExpression --> variable | functionCall | '(' expression ')'
+```
+---
+### prefixExpression examples
+
+```Lua
+table = { x = 30 }
+print(table['x'])   -- `prefixExpression` = `table`
+```
+```Lua
+function getTable()
+    return { x = 30 }
+end
+
+print(getTable()['x'])  -- `prefixExpression` = `getTable()`
+```
+```Lua
+table = { x = { y = 30 }}
+print(table['x']['y'])  -- `prefixExpression` = `table['x']`
 ```
 ---
 ### Variable assignments
@@ -154,7 +215,7 @@ variable       --> identifier |
 ---
 ### Local declarations
 
-+ Local declarations are statements
++ Use **local** keyword
 + Can specify attributes with **< >** (`local x<const> = 10` )
 
 ```Bash
@@ -174,7 +235,7 @@ attribute   --> ('<' identifier '>')? ;
   + Blocks sometimes have a return statement
 
 ```bash
-block --> (statement)* returnStatement?
+block --> (statement)* returnStatement? ;
 ```
 
 ---
@@ -189,7 +250,7 @@ block --> (statement)* returnStatement?
   + Blocks of anonymous functions
 
 ```bash
-chunk --> block
+chunk --> block ;
 ```
 ---
 ### Control structures
@@ -302,7 +363,7 @@ statement --> ... |
 ---
 ### Generic for loop
 
-+ **for**, **do** and **end** keywords
++ **for**, **in**, **do** and **end** keywords
 + List of variable names
 + Block containing statements to execute
 
@@ -331,6 +392,11 @@ identifierList  --> identifier (',' identifier)* ;
 ### Function calls
 
 + Can be executed to simply perform actions with no return value
++ 0 to many arguments
++ Can use ":" syntax to invoke functions on tables, passing its own reference
+
+<div class="container">
+<div class="code-block-normal">
 
 ```Lua
 function greet(name)
@@ -339,10 +405,35 @@ end
 
 greet("Bob")
 ```
-```Bash
-statement --> ... |
+</div>
+<div class="code-block-normal">
 
-              functionCall
+```Lua
+table = {
+    greet = function(self, name)
+        print("Hello, " .. name)
+        print("Hello, " .. self.name)
+    end,
+    name = "Mary"
+}
+
+table:greet("Bob")
+```
+</div>
+</div>
+
+---
+### Updated statement rule
+
+```Bash
+statement    --> ... |
+
+                 functionCall ;
+
+functionCall --> prefixExpression arguments | 
+                 prefixExpression ':' identifier arguments ;
+
+arguments    --> '(' expressionList? ')' ;
 ```
 ---
 ### Function definitions
@@ -367,16 +458,37 @@ end
 + Declare functions in table fields (global)
 + Declare functions with colon syntax (global)
 
+<div class="container">
+<div class="code-block-normal">
+
 ```Lua
+table = { 
+    nestedTable = {} 
+}
+
 function table.nestedTable.greet()
     print("Hello")
 end
+
+table.nestedTable.greet()
 ```
+</div>
+<div class="code-block-normal">
+
 ```Lua
+table = { 
+    name = "Bob" 
+}
+
 function table:greet()
-    print("Hello from: ", self)
+    print("Hello from: ", self.name)
 end
+
+table:greet()   -- Same as table.greet(table)
 ```
+</div>
+</div>
+
 ---
 ### Function parameters
 
@@ -384,11 +496,11 @@ end
 + List of identifiers
 + Optionally, use spread syntax at the end for variadic functions
 ```Lua
-function f(a, b, ...)
-  print(...)  -- 3, 4
+function func(a, b, ...)
+    print(...)  -- 3, 4
 end
 
-f(1, 2, 3, 4)
+func(1, 2, 3, 4)
 ```
 ---
 ### Updated statement rule
@@ -408,11 +520,29 @@ parameterList --> identifierList (',' '...')? | '...' ;
 
 + Types of expressions to consider:
 
-  + Literals (number, string, boolean, table, anonymous function)
+  + Literals (number, string, boolean)
   + Unary operations
   + Binary operations
   + Prefix expressions
+  + Anonymous function
+  + Table
+---
+### Table example
 
++ Separate with either , or ;
++ Implicit index assignments override explicit assignments
+
+```Lua
+mixedTable = {
+    [1] = "first",
+    [2] = "second";
+    key1 = "value1",
+    key2 = "value2";
+    "default"
+}
+
+print(mixedTable[1])  -- "default"
+```
 ---
 ### Expressions in Lua
 
@@ -420,9 +550,9 @@ parameterList --> identifierList (',' '...')? | '...' ;
 expression     --> literal | 
                   unaryOp expression |
                   expression binaryOp expression |
-                  prefixExpression ;
+                  prefixExpression | table | functionDef ;
   
-literal        --> NUMBER | STRING | "true" | "false" | "nil" | table | functionDef | '...' ;
+literal        --> NUMBER | STRING | "true" | "false" | "nil" | '...' ;
 unaryOp        --> "-" | "~" | "not" | "#"
 binaryOp       --> "==" | "~=" | "<" | "<=" | ">" | ">=" | "+" | "-" | "*" | "/" |
                   "^" | "%" | ".." | "|" | "//" | "%" | "&"| "<<" | ">>" | 
@@ -436,40 +566,72 @@ field          --> '[' expression ']' '=' expression | identifier '=' expression
 fieldSeparator --> ',' | ';'
 ```
 ---
+### Ambiguity
+
++ Precedence: Determine which operator is evaluated first
++ Consider the expression: `10 / 2 + 3`
++ The rules generate the same string but different trees
+
+![w:600 center drop-shadow:0,5px,10px,rgb(0,0,0)](Images/SyntaxTrees.png)
+
+---
+### Addressing ambiguity
+
++ Restructure the grammar
+
+  + Evaluate operators with higher precedence first
+  + Create a rule for each precedence level
+  + Each rule matches expressions at its precedence level or higher
+
++ Associativity: Determine which common operators are evaluated first
+
+  + Left-associative: `10 / 5 / 2`
+  + Right-associative: `a = b = c`
+
+---
 <style scoped>
   li {
-    font-size: 20px;
+    font-size: 25px;
   }
 </style>
 ### Precedence and associativity in Lua
 
-+ Highest to lowest precedence:
++ Binary operators are left associative, except **..** and **^**
++ Listed from highest to lowest precedence
 
-  + ^
-  + not, #, -, ~
-  + *, /, //, %
-  + +, -
-  + ..
-  + <<, >>
-  + &
-  + ~
-  + |
-  + <, >, <=, >=, ~=, ==
-  + and
-  + or
+<div class="container">
+<div class="code-block-normal">
+
+  1. ^
+  2. not, #, -, ~
+  3. *, /, //, %
+  4. +, -
+  5. ..
+  6. <<, >>
+</div>
+<div class="code-block-normal">
+
+  7. &
+  8. ~
+  9. |
+  10. <, >, <=, >=, ~=, ==
+  11. and
+  12. or
+</div>
+</div>
 
 ---
 ### New grammar for expressions
 
 ```Bash
-expression    --> logical_or ;
-logical_or    --> logical_and ("or" logical_and)* ;
-logical_and   --> comparison ("and" comparison)* ;
-comparison    --> bitwise_or (( "==" | "~=" | ">" | ">=" | "<" | "<=" ) bitwise_or)* ;
-bitwise_or    --> bitwise_xor ( "|" bitwise_xor )* ;
-bitwise_xor   --> bitwise_and ( "~" bitwise_and )* ;
-bitwise_and   --> shift ( "&" shift )* ;
-shift         --> concatenation ( ( "<<" | ">>" ) concatenation )* ;
+expression    --> logicalOr ;
+logicalOr     --> logicalAnd ("or" logicalAnd)* ;
+logicalAnd    --> comparison ("and" comparison)* ;
+comparison    --> bitwiseOr (( "==" | "~=" | ">" | ">=" | "<" | "<=" ) bitwiseOr)* ;
+bitwiseOr     --> bitwiseXor ( "|" bitwiseXor )* ;
+bitwiseXor    --> bitwiseAnd ( "~" bitwiseAnd )* ;
+bitwiseAnd    --> shift ( "&" shift )* ;
+shift         --> concatenation (( "<<" | ">>" ) concatenation)* ;
 concatenation --> term ( ".." concatenation )* ;
 term          --> factor (( "+" | "-" ) factor)* ;
 factor        --> unary (( "*" | "/" | "//" | "%" ) unary)* ;
@@ -479,6 +641,12 @@ primary       --> NUMBER | STRING | BOOLEAN | NIL | "(" expression ")" ;
 
 ```
 ---
+### Next step
+
++ Implement parser, generating AST
++ Map each grammar rule directly to functions
+
+---
 ### References
 
-+ Precendence list: https://www.lua.org/pil/3.5.html
++ Lua documentation: https://www.lua.org/manual/5.4/manual.html#9
