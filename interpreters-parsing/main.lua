@@ -1,1 +1,3 @@
-10 + (5 - 4) * 2
+while 1 do
+  print(1)
+end

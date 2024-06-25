@@ -22,6 +22,7 @@ statement        --> variableList '=' expressionList |
                      'function' functionName body |
                      'local function' identifier body ;
 
+returnStatement  --> 'return' expressionList? ;
 variableList     --> variable (',' variable)* ;
 expressionList   --> expression (',' expression)* ;
 identifierList   --> identifier (',' identifier)* ;
@@ -35,7 +36,7 @@ functionCall     --> prefixExpression arguments |
                      prefixExpression ':' identifier arguments ;
 arguments        --> '(' expressionList? ')' ;
 functionName     --> identifier ('.' identifier)* (':' identifier)? ;
-body             --> '(' (parameterList)? ')' block 'end' ;
+body             --> '(' parameterList? ')' block 'end' ;
 parameterList    --> identifierList (',' '...')? | '...' ;
 
 expression       --> logicalOr ;
@@ -51,4 +52,10 @@ term             --> factor (( "+" | "-" ) factor)* ;
 factor           --> unary (( "*" | "/" | "//" | "%" ) unary)* ;
 unary            --> ( "-" | "not" | "#" | "~" ) unary | power ;
 power            --> primary ("^" power)* ;
-primary          --> NUMBER | STRING | "true" | "false" | "nil" | functionDef | table | prefixExpression ;
+primary          --> NUMBER | STRING | "true" | "false" | "nil" | "..." | functionDef | table | prefixExpression ;
+
+functionDef      --> 'function' body
+table            --> '{' fieldList? '}'
+fieldList        --> field (fieldSeparator field)* fieldSeparator?
+field            --> '[' expression ']' '=' expression | identifier '=' expression | expression
+fieldSeparator   --> ',' | ';'

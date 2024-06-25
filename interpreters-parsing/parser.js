@@ -1,5 +1,3 @@
-import { Token, tokenType, reservedKeywords } from './token.js';
-
 class Parser {
     constructor(tokens) {
         this.tokens = tokens;
@@ -11,163 +9,485 @@ class Parser {
     }
 
     chunk() {
-        const blockNode = this.block();
-        return { type: 'Chunk', block: blockNode };
+        const block = this.block();
+
+        return { type: 'Chunk', block };
     }
 
     block() {
         const statements = [];
-        while (!this.check('return') && !this.check('end') && !this.isAtEnd()) {
+
+        while (
+            !this.check('RETURN') &&
+            !this.check('END') &&
+            !this.check('ELSEIF') &&
+            !this.check('ELSE') &&
+            !this.check('UNTIL') &&
+            !this.isAtEnd()
+        ) {
             statements.push(this.statement());
+            this.match('SEMICOLON');
         }
-        const returnStatement = this.returnStatement();
-        return { type: 'Block', statements, returnStatement };
+
+        if (this.match('RETURN')) {
+            return {
+                type: 'Block',
+                statements,
+                returnStatement: this.returnStatement(),
+            };
+        }
+
+        return { type: 'Block', statements };
     }
 
     statement() {
-        if (this.check('if')) {
-            return this.ifStatement();
-        } else if (this.check('while')) {
-            return this.whileStatement();
-        } else if (this.check('repeat')) {
-            return this.repeatStatement();
-        } else if (this.check('for')) {
-            return this.forStatement();
-        } else if (this.check('local')) {
-            return this.localStatement();
-        } else if (this.check('function')) {
-            return this.functionStatement();
-        } else if (
-            this.check('identifier') ||
-            this.check('NUMBER') ||
-            this.check('LEFT_PAREN')
-        ) {
-            return this.assignmentOrFunctionCallOrExpression();
+        const tokenType = this.peek().type;
+
+        switch (tokenType) {
+            case 'IF':
+                return this.ifStatement();
+            case 'WHILE':
+                return this.whileStatement();
+            case 'REPEAT':
+                return this.repeatStatement();
+            case 'FOR':
+                return this.forStatement();
+            case 'LOCAL':
+                return this.localStatement();
+            case 'FUNCTION':
+                return this.functionStatement();
+            case 'BREAK':
+                return this.breakStatement();
+            default:
+                if (
+                    this.check('IDENTIFIER') &&
+                    (this.checkNext('LEFT_PAREN') || this.checkNext('COLON'))
+                ) {
+                    const currentToken = this.advance();
+
+                    return this.functionCallStatement(currentToken);
+                } else if (this.isAssignment()) {
+                    return this.assignmentStatement();
+                } else if (this.check('IDENTIFIER')) {
+                    return this.prefixExpression();
+                } else {
+                    throw new Error(
+                        `Line ${this.peek().line}: Unexpected token: ${tokenType}`,
+                    );
+                }
         }
-        throw new Error(`Unexpected token: ${this.currentToken().type}`);
+    }
+
+    returnStatement() {
+        const expressions = this.expressionList();
+        this.match('SEMICOLON');
+
+        return { type: 'ReturnStatement', expressions };
+    }
+
+    breakStatement() {
+        this.advance();
+        this.match('SEMICOLON');
+
+        return { type: 'BreakStatement' };
     }
 
     ifStatement() {
-        this.expect('if');
-        const condition = this.expression();
-        this.expect('then');
-        const thenBlock = this.block();
+        this.advance();
+
+        let ifCondition;
+        if (this.match('LEFT_PAREN')) {
+            ifCondition = this.expression();
+            this.consume('RIGHT_PAREN', 'Expected ")" after "if" condition.');
+        } else {
+            ifCondition = this.expression();
+        }
+
+        this.consume('THEN', 'Expected "then" after "if" condition.');
+        const ifBlock = this.block();
+        const ifClause = {
+            type: 'IfClause',
+            condition: ifCondition,
+            block: ifBlock,
+        };
+
         const elseIfClauses = [];
-        while (this.match('elseif')) {
-            const elseifCondition = this.expression();
-            this.expect('then');
-            const elseifBlock = this.block();
+        while (this.match('ELSEIF')) {
+            let elseIfCondition;
+            if (this.match('LEFT_PAREN')) {
+                elseIfCondition = this.expression();
+                this.consume(
+                    'RIGHT_PAREN',
+                    'Expected ")" after "elseif" condition.',
+                );
+            } else {
+                elseIfCondition = this.expression();
+            }
+
+            this.consume('THEN', 'Expected "then" after  "elseif" condition.');
+            const elseIfBlock = this.block();
+
             elseIfClauses.push({
-                condition: elseifCondition,
-                block: elseifBlock,
+                type: 'ElseIfClause',
+                condition: elseIfCondition,
+                block: elseIfBlock,
             });
         }
-        let elseBlock = null;
-        if (this.match('else')) {
-            elseBlock = this.block();
+
+        let elseClause = [];
+        if (this.match('ELSE')) {
+            elseClause.push({
+                type: 'ElseClause',
+                block: this.block(),
+            });
         }
-        this.expect('end');
+
+        this.consume('END', 'Expected "end" after "if" statement.');
+
         return {
             type: 'IfStatement',
-            condition,
-            thenBlock,
-            elseIfClauses,
-            elseBlock,
+            clauses: [ifClause, ...elseIfClauses, ...elseClause],
         };
     }
 
     whileStatement() {
-        this.expect('while');
-        const condition = this.expression();
-        this.expect('do');
-        const body = this.block();
-        this.expect('end');
-        return { type: 'WhileStatement', condition, body };
+        this.advance();
+
+        let condition;
+        if (this.match('LEFT_PAREN')) {
+            condition = this.expression();
+            this.consume(
+                'RIGHT_PAREN',
+                'Expected ")" after "while" condition.',
+            );
+        } else {
+            condition = this.expression();
+        }
+
+        this.consume('DO', 'Expected "do" after "while" condition.');
+        const block = this.block();
+        this.consume('END', 'Expected "end" after while statement.');
+
+        return { type: 'WhileStatement', condition, block };
     }
 
     repeatStatement() {
-        this.expect('repeat');
-        const body = this.block();
-        this.expect('until');
-        const condition = this.expression();
-        return { type: 'RepeatStatement', condition, body };
+        this.advance();
+        const block = this.block();
+        this.consume('UNTIL', 'Expected "until" after "repeat" body.');
+
+        let condition;
+        if (this.match('LEFT_PAREN')) {
+            condition = this.expression();
+            this.consume(
+                'RIGHT_PAREN',
+                'Expected ")" after "until" condition.',
+            );
+        } else {
+            condition = this.expression();
+        }
+
+        return { type: 'RepeatStatement', condition, block };
     }
 
     forStatement() {
-        this.expect('for');
-        const identifier = this.expect('identifier').value;
-        if (this.match('=')) {
-            const start = this.expression();
-            this.expect(',');
-            const end = this.expression();
-            const step = this.match(',') ? this.expression() : null;
-            this.expect('do');
-            const body = this.block();
-            this.expect('end');
+        this.advance();
+
+        if (this.check('IDENTIFIER') && this.checkNext('ASSIGN')) {
+            const variable = this.advance();
+            this.advance();
+
+            const initialValue = this.expression();
+            this.consume('COMMA', 'Expected "," after start value.');
+
+            const finalValue = this.expression();
+            const stepValue = this.match('COMMA') ? this.expression() : 1;
+
+            this.consume('DO', 'Expected "do" after "for" clauses.');
+            const block = this.block();
+            this.consume('END', 'Expected "end" after "for" statement.');
+
             return {
                 type: 'ForNumericStatement',
-                identifier,
-                start,
-                end,
-                step,
-                body,
+                variable: { type: variable.type, name: variable.lexeme },
+                initialValue,
+                finalValue,
+                stepValue,
+                block,
             };
-        } else {
-            const identifiers = this.identifierList();
-            this.expect('in');
+        } else if (this.check('IDENTIFIER')) {
+            const variables = this.identifierList();
+            this.consume('IN', 'Expected "in" after "for" variables.');
             const expressions = this.expressionList();
-            this.expect('do');
-            const body = this.block();
-            this.expect('end');
+            this.consume('DO', 'Expected "do" after "for" expressions.');
+            const block = this.block();
+            this.consume('END', 'Expected "end" after "for" statement.');
+
             return {
                 type: 'ForGenericStatement',
-                identifiers,
+                variables,
                 expressions,
-                body,
+                block,
             };
         }
+
+        throw new Error(
+            `Line ${this.peek().line}: Unexpected token: ${this.peek().type}`,
+        );
     }
 
     localStatement() {
-        this.expect('local');
-        if (this.check('function')) {
-            this.expect('function');
-            const identifier = this.expect('identifier').value;
+        this.advance();
+
+        if (this.match('FUNCTION')) {
+            const name = this.consume(
+                'IDENTIFIER',
+                'Expected identifier after "function".',
+            ).lexeme;
             const body = this.functionBody();
-            return { type: 'LocalFunctionStatement', identifier, body };
-        } else {
+            this.consume(
+                'END',
+                'Expected "end" after "local function" statement.',
+            );
+
+            return {
+                type: 'LocalFunctionStatement',
+                name,
+                body,
+            };
+        } else if (this.check('IDENTIFIER')) {
             const variables = this.attrVarList();
-            const expressions = this.match('=') ? this.expressionList() : null;
+            const expressions = this.match('ASSIGN')
+                ? this.expressionList()
+                : [];
+
             return { type: 'LocalStatement', variables, expressions };
         }
+
+        throw new Error(
+            `Line ${this.peek().line}: Unexpected token: ${this.peek().type}`,
+        );
     }
 
     functionStatement() {
-        this.expect('function');
-        const name = this.functionName();
-        const body = this.functionBody();
-        return { type: 'FunctionStatement', name, body };
+        this.advance();
+
+        if (this.check('IDENTIFIER')) {
+            const name = this.functionName();
+            const body = this.functionBody();
+            this.consume('END', 'Expected "end" after "function" statement.');
+
+            return {
+                type: 'FunctionStatement',
+                name,
+                body,
+            };
+        }
+
+        throw new Error(
+            `Line ${this.peek().line}: Unexpected token: ${this.peek().type}`,
+        );
     }
 
-    assignmentOrFunctionCallOrExpression() {
-        const expr = this.prefixExpression();
-        if (this.match('=')) {
-            const variables = [expr, ...this.variableListTail()];
-            const expressions = this.expressionList();
-            return { type: 'AssignmentStatement', variables, expressions };
-        } else if (this.match('(') || this.match(':')) {
-            const call = this.functionCallTail(expr);
-            return { type: 'FunctionCallStatement', call };
-        }
-        return { type: 'ExpressionStatement', expression: expr };
+    assignmentStatement() {
+        const variables = this.variableList();
+        this.consume('ASSIGN', 'Expected "=" after variable declarations.');
+        const expressions = this.expressionList();
+
+        return { type: 'AssignmentStatement', variables, expressions };
     }
 
-    returnStatement() {
-        if (this.match('return')) {
-            const expressions = this.expressionList();
-            return { type: 'ReturnStatement', expressions };
+    functionCallStatement(callee) {
+        const node = { type: 'FunctionCall', callee };
+
+        if (this.match('COLON')) {
+            node.method = this.consume(
+                'IDENTIFIER',
+                'Expect method name after ":".',
+            ).lexeme;
         }
-        return null;
+
+        node.args = this.arguments();
+
+        return node;
+    }
+
+    identifierList() {
+        const identifiers = [];
+
+        do {
+            const currentIdentifier = this.consume(
+                'IDENTIFIER',
+                'Expected identifier in list.',
+            );
+            identifiers.push({
+                type: 'Identifier',
+                name: currentIdentifier.lexeme,
+            });
+        } while (this.match('COMMA') && this.check('IDENTIFIER'));
+
+        return identifiers;
+    }
+
+    expressionList() {
+        const expressions = [];
+
+        do {
+            expressions.push(this.expression());
+        } while (this.match('COMMA'));
+
+        return expressions;
+    }
+
+    functionName() {
+        const node = {
+            type: 'FunctionName',
+        };
+
+        node.name = this.consume(
+            'IDENTIFIER',
+            'Expected function name.',
+        ).lexeme;
+
+        if (this.check('PERIOD')) node.members = [];
+        while (this.match('PERIOD')) {
+            const member = this.consume(
+                'IDENTIFIER',
+                'Expected identifier after ".".',
+            );
+            node.members.push({
+                type: member.type,
+                name: member.lexeme,
+            });
+        }
+
+        if (this.match('COLON')) {
+            node.methodName = this.consume(
+                'IDENTIFIER',
+                'Expect identifier after ":".',
+            );
+        }
+
+        return node;
+    }
+
+    functionBody() {
+        this.consume('LEFT_PAREN', 'Expected "(" after function name.');
+        const parameters = this.check('RIGHT_PAREN')
+            ? []
+            : this.parameterList();
+        this.consume('RIGHT_PAREN', 'Expected "(" after function name.');
+        const block = this.block();
+
+        return { type: 'FunctionBody', parameters, block };
+    }
+
+    arguments() {
+        if (this.match('LEFT_PAREN')) {
+            if (this.match('RIGHT_PAREN')) {
+                return [];
+            }
+
+            const args = this.expressionList();
+            this.consume('RIGHT_PAREN', 'Expected ")" after expression.');
+
+            return args;
+        }
+
+        throw new Error(
+            `Line ${this.peek().line}: Unexpected token: ${this.peek().type}`,
+        );
+    }
+
+    parameterList() {
+        let parameters;
+        if (this.match('ELLIPSIS')) {
+            parameters = [
+                {
+                    type: 'RestArgs',
+                    name: '...',
+                },
+            ];
+        } else {
+            parameters = this.identifierList();
+
+            if (this.match('ELLIPSIS')) {
+                parameters.push({
+                    type: 'RestArgs',
+                    name: '...',
+                });
+            }
+        }
+
+        return { type: 'ParameterList', names: parameters };
+    }
+
+    attrVarList() {
+        const attributeVariables = [];
+
+        do {
+            const name = this.consume(
+                'IDENTIFIER',
+                'Expected identifier in list.',
+            ).lexeme;
+
+            if (this.match('LESS')) {
+                const attribute = this.consume(
+                    'IDENTIFIER',
+                    'Expected identifier for attribute.',
+                ).lexeme;
+                this.consume('GREATER', 'Expected ">" after attribute.');
+                attributeVariables.push({
+                    type: 'Identifier',
+                    name,
+                    attribute,
+                });
+            } else {
+                attributeVariables.push({ type: 'Identifier', name });
+            }
+        } while (this.match('COMMA') && this.check('IDENTIFIER'));
+
+        return attributeVariables;
+    }
+
+    variableList() {
+        const variables = [];
+
+        do {
+            variables.push(this.variable());
+        } while (this.match('COMMA'));
+
+        return variables;
+    }
+
+    variable() {
+        let expression;
+
+        if (this.match('IDENTIFIER')) {
+            expression = { type: 'Identifier', name: this.previous().lexeme };
+        } else {
+            expression = this.prefixExpression();
+        }
+
+        while (this.check('LEFT_BRACKET') || this.check('PERIOD')) {
+            if (this.match('LEFT_BRACKET')) {
+                const index = this.expression();
+                this.consume('RIGHT_BRACKET', 'Expected "]" after index.');
+                expression = { type: 'Index', table: expression, index };
+            } else if (this.match('PERIOD')) {
+                const property = this.consume(
+                    'IDENTIFIER',
+                    'Expected property name after ".".',
+                ).lexeme;
+                expression = {
+                    type: 'Property',
+                    table: expression,
+                    property,
+                };
+            }
+        }
+
+        return expression;
     }
 
     // Expressions
@@ -177,209 +497,305 @@ class Parser {
 
     logicalOr() {
         let node = this.logicalAnd();
-        while (this.match('or')) {
-            const operator = this.previous();
+
+        while (this.match('OR')) {
+            const operator = this.previous().lexeme;
             const right = this.logicalAnd();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     logicalAnd() {
         let node = this.comparison();
-        while (this.match('and')) {
-            const operator = this.previous();
+
+        while (this.match('AND')) {
+            const operator = this.previous().lexeme;
             const right = this.comparison();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     comparison() {
         let node = this.bitwiseOr();
-        while (this.match('==', '!=', '>', '>=', '<', '<=')) {
-            const operator = this.previous();
+
+        while (
+            this.match(
+                'EQUAL',
+                'NOT_EQUAL',
+                'GREATER',
+                'GREATER_EQUAL',
+                'LESS',
+                'LESS_EQUAL',
+            )
+        ) {
+            const operator = this.previous().lexeme;
             const right = this.bitwiseOr();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     bitwiseOr() {
         let node = this.bitwiseXor();
-        while (this.match('|')) {
-            const operator = this.previous();
+
+        while (this.match('PIPE')) {
+            const operator = this.previous().lexeme;
             const right = this.bitwiseXor();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     bitwiseXor() {
         let node = this.bitwiseAnd();
-        while (this.match('~')) {
-            const operator = this.previous();
+
+        while (this.match('TILDA')) {
+            const operator = this.previous().lexeme;
             const right = this.bitwiseAnd();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     bitwiseAnd() {
         let node = this.shift();
-        while (this.match('&')) {
-            const operator = this.previous();
+
+        while (this.match('AMPERSAND')) {
+            const operator = this.previous().lexeme;
             const right = this.shift();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     shift() {
         let node = this.concatenation();
-        while (this.match('<<', '>>')) {
-            const operator = this.previous();
+
+        while (this.match('LEFT_SHIFT', 'RIGHT_SHIFT')) {
+            const operator = this.previous().lexeme;
             const right = this.concatenation();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     concatenation() {
         let node = this.term();
-        while (this.match('..')) {
-            const operator = this.previous();
+
+        while (this.match('CONCATENATE')) {
+            const operator = this.previous().lexeme;
             const right = this.concatenation();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     term() {
         let node = this.factor();
-        while (this.match('+', '-')) {
-            const operator = this.previous();
+
+        while (this.match('PLUS', 'MINUS')) {
+            const operator = this.previous().lexeme;
             const right = this.factor();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     factor() {
         let node = this.unary();
-        while (this.match('*', '/', '//', '%')) {
-            const operator = this.previous();
+
+        while (this.match('STAR', 'SLASH', 'DOUBLE_SLASH', 'PERCENT')) {
+            const operator = this.previous().lexeme;
             const right = this.unary();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     unary() {
-        if (this.match('-', 'not', '#', '~')) {
-            const operator = this.previous();
+        if (this.match('MINUS', 'NOT', 'HASHTAG', 'TILDA')) {
+            const operator = this.previous().lexeme;
             const right = this.unary();
-            return { type: 'Unary', operator, right };
+            return { type: 'UnaryExpression', operator, right };
         }
+
         return this.power();
     }
 
     power() {
         let node = this.primary();
-        while (this.match('^')) {
-            const operator = this.previous();
+
+        while (this.match('CARAT')) {
+            const operator = this.previous().lexeme;
             const right = this.power();
-            node = { type: 'Binary', left: node, operator, right };
+            node = { type: 'BinaryExpression', left: node, operator, right };
         }
+
         return node;
     }
 
     primary() {
-        if (this.match('NUMBER', 'STRING', 'true', 'false', 'nil')) {
+        if (this.match('NUMBER', 'STRING', 'TRUE', 'FALSE', 'NIL')) {
             return { type: 'Literal', value: this.previous().value };
         }
-        if (this.match('function')) {
+
+        if (this.match('ELLIPSIS')) {
+            return { type: 'VarArgs' };
+        }
+
+        if (this.check('FUNCTION')) {
             return this.functionDef();
         }
-        if (this.match('{')) {
+
+        if (this.check('LEFT_BRACE')) {
             return this.table();
         }
+
         return this.prefixExpression();
     }
 
-    prefixExpression() {
-        if (this.match('identifier')) {
-            return this.variable(this.previous());
-        } else if (this.match('(')) {
-            const expr = this.expression();
-            this.expect(')');
-            return { type: 'Grouping', expression: expr };
-        }
-        throw new Error(
-            `Unexpected token in prefix expression: ${this.currentToken().type}`,
-        );
+    functionDef() {
+        this.advance();
+        const body = this.functionBody();
+        this.consume('END', 'Expected "end" after function definition.');
+
+        return body;
     }
 
-    variable(token) {
-        let node = { type: 'Variable', name: token.lexeme };
-        while (true) {
-            if (this.match('[')) {
+    table() {
+        this.advance();
+        const fields = this.check('RIGHT_BRACE') ? [] : this.fieldList();
+        this.consume('RIGHT_BRACE', 'Expected "}" after table definition.');
+
+        return { type: 'TableConstructorExpression', fields };
+    }
+
+    fieldList() {
+        const fields = [];
+
+        do {
+            fields.push(this.field());
+        } while (
+            this.match('COMMA', 'SEMICOLON') &&
+            !this.check('RIGHT_BRACE')
+        );
+
+        return fields;
+    }
+
+    field() {
+        if (this.match('LEFT_BRACKET')) {
+            const key = this.expression();
+            this.consume('RIGHT_BRACKET', 'Expected ] for field assignment.');
+            this.consume('ASSIGN', 'Expected = for field assignment');
+            const value = this.expression();
+
+            return { type: 'TableField', key, value };
+        } else if (this.match('IDENTIFIER')) {
+            const key = this.previous().lexeme;
+            this.consume('ASSIGN', 'Expected = for field assignment');
+            const value = this.expression();
+
+            return { type: 'TableField', key, value };
+        } else {
+            const value = this.expression();
+
+            return { type: 'TableValueField', value };
+        }
+    }
+
+    prefixExpression() {
+        let expression;
+        if (this.match('IDENTIFIER')) {
+            expression = { type: 'Identifier', name: this.previous().lexeme };
+        } else if (this.match('LEFT_PAREN')) {
+            expression = this.expression();
+            this.consume('RIGHT_PAREN', 'Expected ")" after expression.');
+            expression = { type: 'GroupingExpression', expression };
+        } else {
+            throw new Error(
+                `Line ${this.peek().line}: Unexpected token: ${this.peek().type}`,
+            );
+        }
+
+        while (
+            this.check('LEFT_BRACKET') ||
+            this.check('PERIOD') ||
+            this.check('LEFT_PAREN') ||
+            this.check('COLON')
+        ) {
+            if (this.match('LEFT_BRACKET')) {
                 const index = this.expression();
-                this.expect(']');
-                node = { type: 'Index', table: node, index };
-            } else if (this.match('.')) {
-                const property = this.expect('identifier').lexeme;
-                node = { type: 'PropertyAccess', object: node, property };
-            } else if (this.match(':')) {
-                const method = this.expect('identifier').lexeme;
-                const args = this.arguments();
-                node = { type: 'MethodCall', receiver: node, method, args };
-            } else {
-                break;
+                this.consume('RIGHT_BRACKET', 'Expected "]" after index.');
+                expression = { type: 'Index', table: expression, index };
+            } else if (this.match('PERIOD')) {
+                const property = this.consume(
+                    'IDENTIFIER',
+                    'Expected property name after "."',
+                ).lexeme;
+                expression = {
+                    type: 'Property',
+                    table: expression,
+                    property,
+                };
+            } else if (this.check('LEFT_PAREN') || this.check('COLON')) {
+                expression = this.functionCallStatement(expression);
             }
         }
-        return node;
-    }
 
-    expressionList() {
-        const expressions = [];
-        do {
-            expressions.push(this.expression());
-        } while (this.match(','));
-        return expressions;
+        return expression;
     }
 
     // Utility methods
-    match(...types) {
-        for (let type of types) {
+    match(...tokenTypes) {
+        for (let type of tokenTypes) {
             if (this.check(type)) {
                 this.advance();
+
                 return true;
             }
         }
+
         return false;
     }
 
-    expect(type) {
-        const token = this.match(type);
-        if (!token) {
-            throw new Error(
-                `Expected token type ${type} but got ${this.currentToken().type}`,
-            );
-        }
-        return token;
+    consume(tokenType, message) {
+        if (this.check(tokenType)) return this.advance();
+
+        throw new Error(`Line ${this.peek().line}: ${message}`);
     }
 
-    check(type) {
-        return this.currentToken() && this.currentToken().type === type;
+    check(tokenType) {
+        if (this.isAtEnd()) return false;
+
+        return this.peek().type === tokenType;
+    }
+
+    checkNext(tokenType) {
+        if (this.isAtEnd()) return false;
+
+        return this.tokens[this.current + 1].type === tokenType;
     }
 
     advance() {
         if (!this.isAtEnd()) this.current++;
+
         return this.previous();
     }
 
-    currentToken() {
+    peek() {
         return this.tokens[this.current];
     }
 
@@ -388,7 +804,70 @@ class Parser {
     }
 
     isAtEnd() {
-        return this.currentToken().type === 'EOF';
+        return this.peek().type === 'EOF';
+    }
+
+    isAssignment() {
+        if (this.check('IDENTIFIER')) {
+            let tempCurrent = this.current + 1;
+
+            while (tempCurrent < this.tokens.length) {
+                if (this.tokens[tempCurrent].type === 'PERIOD') {
+                    tempCurrent = tempCurrent + 2;
+                } else if (this.tokens[tempCurrent].type === 'LEFT_BRACKET') {
+                    tempCurrent++;
+
+                    while (
+                        this.tokens[tempCurrent].type !== 'RIGHT_BRACKET' &&
+                        tempCurrent < this.tokens.length
+                    ) {
+                        tempCurrent++;
+                    }
+
+                    tempCurrent++;
+                } else if (
+                    this.tokens[tempCurrent].type === 'ASSIGN' ||
+                    this.tokens[tempCurrent].type === 'COMMA'
+                ) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        return false;
+    }
+}
+
+export function printAST(node, indent = '') {
+    if (Array.isArray(node)) {
+        node.forEach((child) => printAST(child, indent + '    '));
+        return;
+    }
+
+    const nodeType = node.type;
+    console.log(`${indent}type: ${nodeType}`);
+
+    for (const key in node) {
+        if (key === 'type') continue;
+        const child = node[key];
+
+        if (Array.isArray(child)) {
+            console.log(`${indent}${key}: [`);
+            child.forEach((item) => {
+                console.log(`${indent}    {`);
+                printAST(item, indent + '        ');
+                console.log(`${indent}    }`);
+            });
+            console.log(`${indent}]`);
+        } else if (typeof child === 'object' && child !== null) {
+            console.log(`${indent}${key}: {`);
+            printAST(child, indent + '    ');
+            console.log(`${indent}}`);
+        } else {
+            console.log(`${indent}${key}: ${JSON.stringify(child)}`);
+        }
     }
 }
 

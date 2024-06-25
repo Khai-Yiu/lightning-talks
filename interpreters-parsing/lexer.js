@@ -55,7 +55,7 @@ function Lexer(sourceCode) {
                 this.addToken(tokenType.PIPE);
                 break;
             case '#':
-                this.addToken(tokenType.TAG);
+                this.addToken(tokenType.HASHTAG);
                 break;
             case '^':
                 this.addToken(tokenType.CARET);
@@ -65,6 +65,9 @@ function Lexer(sourceCode) {
                 break;
             case '*':
                 this.addToken(tokenType.STAR);
+                break;
+            case '%':
+                this.addToken(tokenType.PERCENT);
                 break;
             case '/':
                 this.addToken(
@@ -264,7 +267,16 @@ function Lexer(sourceCode) {
             this.currentPosition,
         );
         const type = reservedKeywords[value] ?? tokenType.IDENTIFIER;
-        this.addToken(type);
+
+        if (type === 'TRUE') {
+            this.addToken(type, true);
+        } else if (type === 'FALSE') {
+            this.addToken(type, false);
+        } else if (type === 'NIL') {
+            this.addToken(type, 'nil');
+        } else {
+            this.addToken(type);
+        }
     };
 
     this.readNumber = function () {

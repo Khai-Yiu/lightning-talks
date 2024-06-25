@@ -5,7 +5,7 @@ export const tokenType = {
     SLASH: 'SLASH',
     PERCENT: 'PERCENT',
     CARET: 'CARET',
-    TAG: 'TAG',
+    HASHTAG: 'HASHTAG',
     EQUAL: 'EQUAL',
     NOT_EQUAL: 'NOT_EQUAL',
     LESS_EQUAL: 'LESS_EQUAL',
@@ -23,7 +23,7 @@ export const tokenType = {
     SEMICOLON: 'SEMICOLON',
     COMMA: 'COMMA',
     COLON: 'COLON',
-    DOT: 'PERIOD',
+    PERIOD: 'PERIOD',
     CONCATENATE: 'CONCATENATE',
     ELLIPSIS: 'ELLIPSIS',
     LEFT_SHIFT: 'LEFT_SHIFT',
@@ -71,6 +71,6 @@ export function Token(type, lexeme, value, line) {
     this.line = line;
 }
 
-Token.prototype.toString = function () {
-    return `Token { type: ${this.type}, lexeme: ${JSON.stringify(this.lexeme)}, value: ${JSON.stringify(this.value)}, line: ${this.line} }`;
-};
+// Token.prototype.toString = function () {
+//     return `Token { type: ${this.type}, lexeme: ${JSON.stringify(this.lexeme)}, value: ${JSON.stringify(this.value)}, line: ${this.line} }`;
+// };
