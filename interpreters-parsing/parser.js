@@ -723,7 +723,6 @@ class Parser {
         } else if (this.match('LEFT_PAREN')) {
             expression = this.expression();
             this.consume('RIGHT_PAREN', 'Expected ")" after expression.');
-            expression = { type: 'GroupingExpression', expression };
         } else {
             throw new Error(
                 `Line ${this.peek().line}: Unexpected token: ${this.peek().type}`,
