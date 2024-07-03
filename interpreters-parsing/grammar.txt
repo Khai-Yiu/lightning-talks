@@ -35,7 +35,7 @@ variable         --> identifier |
 functionCall     --> prefixExpression arguments | 
                      prefixExpression ':' identifier arguments ;
 arguments        --> '(' expressionList? ')' ;
-functionName     --> identifier ('.' identifier)* (':' identifier)? ;
+functionName     --> idetifier ('.' identifier)* (':' identifier)? ;
 body             --> '(' parameterList? ')' block 'end' ;
 parameterList    --> identifierList (',' '...')? | '...' ;
 

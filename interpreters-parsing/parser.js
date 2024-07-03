@@ -15,6 +15,7 @@ class Parser {
     }
 
     block() {
+        const node = { type: 'Block', statements: [] };
         const statements = [];
 
         while (
@@ -25,19 +26,15 @@ class Parser {
             !this.check('UNTIL') &&
             !this.isAtEnd()
         ) {
-            statements.push(this.statement());
+            node.statements.push(this.statement());
             this.match('SEMICOLON');
         }
 
         if (this.match('RETURN')) {
-            return {
-                type: 'Block',
-                statements,
-                returnStatement: this.returnStatement(),
-            };
+            node.returnStatement = this.returnStatement;
         }
 
-        return { type: 'Block', statements };
+        return node;
     }
 
     statement() {
@@ -79,6 +76,8 @@ class Parser {
     }
 
     returnStatement() {
+        this.advance();
+
         const expressions = this.expressionList();
         this.match('SEMICOLON');
 
@@ -93,101 +92,115 @@ class Parser {
     }
 
     ifStatement() {
+        const node = {
+            type: 'IfStatement',
+            clauses: [],
+        };
         this.advance();
 
-        let ifCondition;
+        node.clauses.push(this.ifBlock());
+
+        if (this.check('ELSEIF')) {
+            node.clauses.push(...this.elseIfBlock());
+        }
+
+        if (this.check('ELSE')) {
+            node.clauses.push(this.elseBlock());
+        }
+
+        this.consume('END', 'Expected "end" after "if" statement.');
+
+        return node;
+    }
+
+    ifBlock() {
+        const clause = { type: 'IfClause' };
+
         if (this.match('LEFT_PAREN')) {
-            ifCondition = this.expression();
+            clause.condition = this.expression();
             this.consume('RIGHT_PAREN', 'Expected ")" after "if" condition.');
         } else {
-            ifCondition = this.expression();
+            clause.condition = this.expression();
         }
 
         this.consume('THEN', 'Expected "then" after "if" condition.');
-        const ifBlock = this.block();
-        const ifClause = {
-            type: 'IfClause',
-            condition: ifCondition,
-            block: ifBlock,
-        };
+        clause.block = this.block();
 
-        const elseIfClauses = [];
+        return clause;
+    }
+
+    elseIfBlock() {
+        const clauses = [];
+
         while (this.match('ELSEIF')) {
-            let elseIfCondition;
+            const clause = { type: 'ElseIfClause' };
+
             if (this.match('LEFT_PAREN')) {
-                elseIfCondition = this.expression();
+                clause.condition = this.expression();
                 this.consume(
                     'RIGHT_PAREN',
                     'Expected ")" after "elseif" condition.',
                 );
             } else {
-                elseIfCondition = this.expression();
+                clause.condition = this.expression();
             }
 
             this.consume('THEN', 'Expected "then" after  "elseif" condition.');
-            const elseIfBlock = this.block();
+            clause.block = this.block();
 
-            elseIfClauses.push({
-                type: 'ElseIfClause',
-                condition: elseIfCondition,
-                block: elseIfBlock,
-            });
+            clauses.push(clause);
         }
 
-        let elseClause = [];
-        if (this.match('ELSE')) {
-            elseClause.push({
-                type: 'ElseClause',
-                block: this.block(),
-            });
-        }
+        return clauses;
+    }
 
-        this.consume('END', 'Expected "end" after "if" statement.');
+    elseBlock() {
+        const clause = { type: 'ElseClause' };
 
-        return {
-            type: 'IfStatement',
-            clauses: [ifClause, ...elseIfClauses, ...elseClause],
-        };
+        this.advance();
+        clause.block = this.block();
+
+        return clause;
     }
 
     whileStatement() {
+        const node = { type: 'WhileStatement' };
         this.advance();
 
-        let condition;
         if (this.match('LEFT_PAREN')) {
-            condition = this.expression();
+            node.condition = this.expression();
             this.consume(
                 'RIGHT_PAREN',
                 'Expected ")" after "while" condition.',
             );
         } else {
-            condition = this.expression();
+            node.condition = this.expression();
         }
 
         this.consume('DO', 'Expected "do" after "while" condition.');
-        const block = this.block();
+        node.block = this.block();
         this.consume('END', 'Expected "end" after while statement.');
 
-        return { type: 'WhileStatement', condition, block };
+        return node;
     }
 
     repeatStatement() {
+        const node = { type: 'RepeatStatement' };
         this.advance();
-        const block = this.block();
+        node.block = this.block();
         this.consume('UNTIL', 'Expected "until" after "repeat" body.');
 
-        let condition;
         if (this.match('LEFT_PAREN')) {
-            condition = this.expression();
+            node.condition = this.expression();
             this.consume(
                 'RIGHT_PAREN',
                 'Expected ")" after "until" condition.',
             );
         } else {
-            condition = this.expression();
+            node.condition = this.expression();
         }
 
-        return { type: 'RepeatStatement', condition, block };
+        return node;
     }
 
     forStatement() {
@@ -400,26 +413,27 @@ class Parser {
     }
 
     parameterList() {
-        let parameters;
+        let node = { type: 'ParameterList', names: parameters };
+
         if (this.match('ELLIPSIS')) {
-            parameters = [
+            node.parameters = [
                 {
                     type: 'RestArgs',
                     name: '...',
                 },
             ];
         } else {
-            parameters = this.identifierList();
+            node.parameters = this.identifierList();
 
             if (this.match('ELLIPSIS')) {
-                parameters.push({
+                node.parameters.push({
                     type: 'RestArgs',
                     name: '...',
                 });
             }
         }
 
-        return { type: 'ParameterList', names: parameters };
+        return node;
     }
 
     attrVarList() {
@@ -461,33 +475,33 @@ class Parser {
     }
 
     variable() {
-        let expression;
+        let node;
 
         if (this.match('IDENTIFIER')) {
-            expression = { type: 'Identifier', name: this.previous().lexeme };
+            node = { type: 'Identifier', name: this.previous().lexeme };
         } else {
-            expression = this.prefixExpression();
+            node = this.prefixExpression();
         }
 
         while (this.check('LEFT_BRACKET') || this.check('PERIOD')) {
             if (this.match('LEFT_BRACKET')) {
                 const index = this.expression();
                 this.consume('RIGHT_BRACKET', 'Expected "]" after index.');
-                expression = { type: 'Index', table: expression, index };
+                node = { type: 'Index', table: node, index };
             } else if (this.match('PERIOD')) {
                 const property = this.consume(
                     'IDENTIFIER',
                     'Expected property name after ".".',
                 ).lexeme;
-                expression = {
+                node = {
                     type: 'Property',
-                    table: expression,
+                    table: node,
                     property,
                 };
             }
         }
 
-        return expression;
+        return node;
     }
 
     // Expressions
@@ -601,7 +615,7 @@ class Parser {
     }
 
     term() {
-        let node = this.factor();
+        const node = this.factor();
 
         while (this.match('PLUS', 'MINUS')) {
             const operator = this.previous().lexeme;
