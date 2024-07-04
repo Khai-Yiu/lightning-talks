@@ -615,7 +615,7 @@ class Parser {
     }
 
     term() {
-        const node = this.factor();
+        let node = this.factor();
 
         while (this.match('PLUS', 'MINUS')) {
             const operator = this.previous().lexeme;
