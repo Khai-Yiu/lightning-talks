@@ -1,0 +1,15 @@
+{
+    "presets": ["@babel/preset-env"],
+    "env": {
+        "prod": {
+            "minified": true,
+            "comments": false
+        },
+        "customPreset": {
+            "presets": ["./src/my-preset"]
+        },
+        "customPlugin": {
+            "plugins": []
+        }
+    }
+}
