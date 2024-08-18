@@ -1,6 +1,7 @@
 // The function 'sum' adds all numbers within a valid array of numbers
 // Parameters: array (number[])
 // Outputs: sum (number), throws error if invalid parameters
+const a = 1 + 2;
 
 const sum = (array) => {
     if (!Array.isArray(array)) {

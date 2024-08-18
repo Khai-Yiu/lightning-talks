@@ -7,7 +7,7 @@ exports["default"] = void 0;
 // The function 'sum' adds all numbers within a valid array of numbers
 // Parameters: array (number[])
 // Outputs: sum (number), throws error if invalid parameters
-
+var a = 1 + 2;
 var sum = function sum(array) {
   if (!Array.isArray(array)) {
     throw new Error('An array of numbers must be provided.');

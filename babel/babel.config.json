@@ -6,10 +6,10 @@
             "comments": false
         },
         "customPreset": {
-            "presets": ["./src/my-preset"]
+            "presets": ["@babel/preset-env", "./src/my-preset"]
         },
         "customPlugin": {
-            "plugins": []
+            "plugins": ["./src/logger-plugin"]
         }
     }
 }
