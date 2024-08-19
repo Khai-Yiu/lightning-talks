@@ -4,12 +4,6 @@
         "prod": {
             "minified": true,
             "comments": false
-        },
-        "customPreset": {
-            "presets": ["@babel/preset-env", "./src/my-preset"]
-        },
-        "customPlugin": {
-            "plugins": ["./src/logger-plugin"]
         }
     }
 }

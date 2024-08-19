@@ -32,14 +32,10 @@ describe('sum', () => {
             });
         });
     });
-    describe('given no array is provided to the function', () => {
+    describe('given no array is provided', () => {
         it('throws an error', () => {
-            expect(() => srcSum()).toThrow(
-                'An array of numbers must be provided.',
-            );
-            expect(() => distSum()).toThrow(
-                'An array of numbers must be provided.',
-            );
+            expect(() => srcSum()).toThrow('An array must be provided.');
+            expect(() => distSum()).toThrow('An array must be provided.');
         });
     });
 });

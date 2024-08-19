@@ -3,13 +3,11 @@
     "version": "1.0.0",
     "description": "",
     "main": "index.js",
-    "type": "module",
     "scripts": {
         "test:watch": "jest --watch",
         "build": "babel src/sum.js -d dist",
-        "build:prod": "NODE_ENV=prod babel src/sum.js -d dist",
-        "build:preset": "NODE_ENV=customPreset babel src/component.jsx -d dist",
-        "build:custom": "NODE_ENV=customPlugin babel src/logger.js -d dist"
+        "build:watch": "babel src/sum.js -d dist --watch",
+        "build:prod": "NODE_ENV=prod babel src/sum.js -d dist"    
     },
     "devDependencies": {
         "@babel/cli": "^7.24.8",

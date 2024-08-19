@@ -77,7 +77,7 @@ style: |
 });
 ```
 
-<!-- Babel is a toolchain primarily for converting ES6 code and above into backwards compatible JavaScript. It achieves this through a combination of syntax transformation and polyfilling which is just basically adding missing functionality to your code depending if your target environment doesn't support new features. Then there are codemods or tailored custom plugins developers create which automatically transform a whole codebase to ensure backwards compatibility, but it's also useful as a general refactoring tool if you need to adhere to certain coding styles or make use of new features, these can be applied automatically. -->
+<!-- Babel is a toolchain primarily for converting ES6+ code into ES5 code to ensure backwards compatibility. So in the basic example arrow functions aren't a feature of ES6 which is 2015, but it's just syntactic sugar for a function declaration and it provides the same functionality. It's also useful as a general refactoring tool if you need to adhere to certain coding styles or make use of new features, you can apply different types of transformations to your codebase. -->
 
 ---
 ### Brief History
@@ -87,14 +87,14 @@ style: |
 + Turned into Babel, becoming a tooling platform for developers
 + Still serves as a modern JS transpiler
 
-<!-- Babel was created in September 2014 and it was originally named 6to5. Just like the name suggests, it was designed to transpile ES6 code into ES5 code. In a short time it gained huge popularity and began to expand its scope beyond just transpiling, so they renamed to Babel and became a toolchain where developers can take advantage of their simple API. Currently  -->
+<!-- Babel was created in September 2014 and it was originally named 6to5. Just like the name suggests, it was designed to transpile ES6 code into ES5 code. In a short time it gained huge popularity and began to expand its scope beyond just transpiling, so they renamed to Babel and became a toolchain where developers can take advantage of their simple API to develop different JS tools. -->
 ---
 ### Why use Babel?
 
 + ECMA has released yearly updates to JavaScript
 + Babel transpiler ensures new features of JS can be used regardless of browser support
 
-<!-- Since ES6, which was released in 2015, there's been a new update to JavaScript every year. This means browsers will frequently need to integrate changes to support new features which isn't guaranteed or they take a long time to do so. However, Babel will always integrate these new standards. So using a Babel transpiler ensures developers can use new features of JavaScript without having to worry about the platform their customers use. Today, Babel still serves as a modern JS transpiler supporting the latest features. -->
+<!-- Since ES6, which was released in 2015, there's been a new update to JavaScript every year. This means browsers will frequently need to integrate changes to support new features which isn't guaranteed or they take a long time to do so. However, Babel will always keep up to date with the new standards. Therefore using a Babel transpiler ensures developers can use new features of JavaScript without having to worry about the platform their customers use. Today, Babel still serves as a modern JS transpiler supporting the latest features. -->
 
 ---
 ### How does it work? (pt. 1)
@@ -105,7 +105,7 @@ style: |
 
 ![w:800 center drop-shadow:0,5px,10px,rgb(0,0,0)](Images/Parsing.png)
 
-<!-- Babel starts with using the module @babel/parser to parse your source code into an AST which is just a structured representation of the code reflecting its syntax and structure. So under the hood it's performing lexical analysis (converting code to tokens) and then syntactic analysis (convertting tokens into AST) -->
+<!-- Babel starts with parsing your source code into an AST, using the helper package babel/parser to do so. An AST is just a structured representation of your code reflecting its syntax and structure. So under the hood it's performing lexical analysis (converting code to tokens) and then syntactic analysis or parsing (converting tokens into AST) to abstract all the semantic details -->
 ---
 <style scoped>
   .code-block-normal {
@@ -163,7 +163,7 @@ function square(n) {
 </div>
 </div>
 
-<!-- Here's a simple function and it's representation as a sub-tree in the AST. You might describe it by taking the important features of this function. So we need to know we are dealing with a function type, it's identifier name which is square, the parameters the function takes in, its exports represented by the ReturnStatement node and in other cases, there could be multiple statements within the function body which is why body is an array. -->
+<!-- Here's a simple square function and it's representation as a sub-tree in the AST. You might describe it by taking the important features of this function. So in this case, we need to know we are dealing with a function type, it's name which is square, the parameters the function takes in, its exports represented by the ReturnStatement node and in other cases, there could be multiple statements within the function body which is why body is an array. And each object with a type property you see is considered a node by Babel, which will be important later on for applying specific transformations based off the node type. -->
 ---
 ### How does it work? (pt. 2)
 
@@ -173,7 +173,7 @@ function square(n) {
 
 ![w:1000 center drop-shadow:0,5px,10px,rgb(0,0,0)](Images/Transform.png)
 
-<!-- It applies our specified plugins sequentially to the AST, the module @babel/traverse is used to traverse the AST, then visit and potentially transform different nodes depending on the logic. The plugins that apply the transformation make use of the visitor pattern, which in this context means to run a transformation function on a corresponding node when that node is visited. This'll probably more clearer later on when writing our own plugin. And modification of the AST is done in-place so there's less overhead. -->
+<!-- Babel applies our specified plugins sequentially to the AST, the module @babel/traverse is used to traverse the AST, then visit and potentially transform different nodes depending on the logic. The plugins that apply the transformation make use of the visitor pattern, which is used here to run a transformation function on a corresponding node when that node is visited. This'll probably more clearer later on when writing our own plugin. And modification of the AST is done in-place so there's less overhead. -->
 ---
 ### How does it work? (pt. 3)
 
@@ -193,37 +193,28 @@ function square(n) {
 ### Setting up Babel
 
 + Installation: `npm install --save-dev @babel/core @babel/cli @babel/preset-env`
-+ `@babel/core` use local configuration files
-+ `@babel/cli` use Babel from the command line
++ `@babel/core` - transpiling tools
++ `@babel/cli` - CLI for using babel in terminal or scripts
 + `@babel/preset-env` preset ensuring new JS features are backwards-compatible
 
+<!-- This is a pretty standard setup for installing babel, babel core provides the core functionality for transpiling your code, such as parsing, applying transformations and generating code. Babel cli provides a command line interface for running babel and preset env is a preset for determining what transformations take place which we'll get into a bit later -->
 ---
-### Package.json
+### Running babel
 
-+ In `package.json`
++ `babel <target> -d <output_target>`
 
-```JSON
-{
-  "scripts": {
-    "build": "babel src -d dist"
-  },
-  "devDependencies": {
-      "@babel/cli": "^7.24.8",
-      "@babel/core": "^7.25.2",
-      "@babel/preset-env": "^7.25.2"
-  }
-}
-```
++ `--out-file`, `--presets`, `--plugins`, `--watch`
 
-<!-- In package.json, we can define a script named build which transpiles the files in the src directory and outputs it to the dist directory -->
+
+<!-- To run babel, you can specify a target directory or file and the output for the transpiled code. Then there are some flags you can add, so out-file will output all input files into a single file. You can specify the presets and plugins you want to apply in the command but it's better to setup in a configuration file. And if watch is enabled it automatically transpiles files when they change, that can be useful for testing if you want to ensure your source implementation and transpiled implementation provide the same functionality, and you won't have to explicitly run the babel command to maintain an updated build after each change. -->
 
 ---
 ### Configuration files
 
-+ Create a `babel.config.json` file for an entire project
-+ Can also use `.babelrc.json` on a subset of directories / files
++ Project-wide: `babel.config.json` or `babel.config.js`
++ File-relative: `.babelrc.json` or `.babelrc.js`
   
-<!-- You can specify your Babel configurations in the babel.config.json file located at the root directory. If you want to apply transformations to a subset of directories or files, use a .babelrc.json file  -->
+<!-- You can specify your Babel configurations in the babel.config.json file located at the root directory, this will apply to the whole project. If you want to apply the configuration only to a subset of directories or files, use a .babelrc.json file in the relative location. You can also use JavaScript format instead of JSON if your configuration is dynamic, then you can apply different settings based off logic. You'd just need to export a function which returns an object of all the settings you'd want. -->
 ---
 ### Babel plugins
 
@@ -232,33 +223,35 @@ function square(n) {
 
 ```JSON
 {
-  "plugins": ["transform-decorators-legacy","transform-class-properties"]
-}
-```
-```JSON
-{
-  "plugins": ["pluginA", ["pluginB"], ["pluginC", {}]]
+  "plugins": [
+    "@babel/plugin-transform-block-scoping"
+    ["@babel/plugin-transform-arrow-functions", { "spec": true }],
+  ]
 }
 ```
 
+<!-- Plugins are just modules which apply code transformations. The order you specify multiple plugins is also important. So for example, if one plugin converts ES6 features to ES5, then the following plugin expects ES6 syntax to perform a transformation, it might lead to unexpected results. So for plugins, they're applied from left to right. Then, Babel automatically resolves plugins that are on npm by looking in the node modules directory. Otherwise you can specify the file path to a custom plugin. And there are two formats as you can see for adding plugins, the plugins property itself is an array but if you want to specify options for a certain plugin, that needs to be wrapped in another array and provided an object. -->
 ---
 ### Babel presets
 
-+ Presets are a set of plugins or configuration options
++ Presets are a set of plugins
 + Apply from right to left, plugins run before presets
 
 ```JSON
 {
-  "presets": ["src/my-preset", "@babel/preset-env"]
-}
-```
-```JSON
-{
-  "presets": ["presetA", ["presetB"], ["presetC", {}]]
+  "presets": ["@babel/preset-env", "@babel/preset-typescript"]
 }
 ```
 
-<!-- Presets are just a set of plugins or configurations tailored for a specific work environment, it saves you the hassle of configuring multiple specific plugins. And unlike plugins, they're applied right to left instead. If both presets and plugins are specified, the plugins are applied first. In the babel configuration file, you can provide the name of the preset and Babel will check node_modules to see if it's installed. You can also provide the path to a custom preset if you've created one. -->
+<!-- Presets are just a set of plugins tailored for a specific work environment, it saves you the hassle of configuring multiple specific plugins. And unlike plugins, they're applied right to left instead. If both presets and plugins are specified, the plugins are applied first. Similarly to plugins, in the babel configuration file, you can provide the name of the preset and Babel will check node_modules to see if it's installed. You can also provide the path to a custom preset if you've created one. And similar to plugins, you can also provide options to a plugin but it also needs to be within another array. -->
+---
+### Official presets
+
++ **@babel/preset-env**
++ **@babel/preset-typescript**
++ **@babel/preset-react**
+
+<!-- These are some of the more common presets, preset-env is a smart preset which can dynamically determine which plugins and polyfills are needed for transpiling based off the target environment. So it saves you time by not needing to micromanage transforms and reduce your bundle size. Then you got the typescript and react presets as well which is self-explana tory. -->
 ---
 <style scoped>
   code {
@@ -286,22 +279,40 @@ function square(n) {
 }
 ```
 
-<!-- One of the options for preset-env is target, which describes the environment you want to support for your project. The first format provides a browserslist-compatible query to specify its target browsers. In this case, it tells Babel to transpile the code so it's compatible in browsers with more than 0.25% global usage and to ignore browsers that are no longer maintained. The comment links to a repo with more information on the queries you can form. The second format is an object of minimum environment versions to support. If no target is provided, then Babel assumes you target the oldest browsers possible and will transform your code to be ES5 compatible.  -->
+<!-- One of the options for preset-env is target, where you can explicitly describe the target browser environment you want to support. The first format provides a browserslist-compatible query to specify target browsers. In this case, it tells Babel to transpile the code so it's compatible in browsers with more than 0.25% global usage and to ignore browsers that are no longer maintained. The comment links to a repo with more information on the queries you can form. The second format is an object of minimum environment versions to support. If no target is provided, then Babel assumes you target the oldest browsers possible and will transform your code to be ES5 compatible. -->
 ---
 ### Custom presets
 
-+ Export a configuration object
 ```JSON
+// src/custom-preset.js
+
 module.exports = () => ({
   "presets": ["presetA"],
   "plugins": ["pluginA"],
   ...
 })
 ```
+```JSON
+// babel.config.json
 
-<!-- Pretty simple to create a custom preset, this is just a basic template. You need to export a configuration object specifying the plugins to use, and you can even add other presets and options if you want -->
+{
+  "presets": ["./src/custom-preset.js"]
+}
+```
+
+<!-- And like plugins, you can also create custom presets. You need to export a configuration object specifying the plugins to use, and you can even add other presets and options if you want -->
 ---
-### Other configuration options
+### Polyfills
+
++ Polyfills are pieces of code used to add missing functionality
++ Some modern features aren't available in older versions
++ **@babel/polyfill** is deprecated
++ **core-js** to import polyfills
+
+<!-- Polyfills add missing functionality in environments that lack support for certain modern JavaScript features. Since some relatively newer features like Promises and certain array methods weren't available in older versions, that functionality needs to be provided since transpiling it won't make that feature available in environments that don't natively support it. So overall, Babel provides support across different environments through a combination of transpilation, which deals with syntax changes, and polyfilling, which provides missing functionality for features. As of the latest version of Babel, the babel/polyfill package has been deprecated in favour of using the corejs library to include polyfills you only need which can reduce bundle size. -->
+
+---
+### Some other configuration options
 
 + **ignore**: Files / directories to be excluded
 + **include**: Files / directories to be included
@@ -328,23 +339,13 @@ module.exports = () => ({
   "presets": ["@babel/preset-env"],
   "env": {
     "prod": {
-      "comments": false
+      "minified": true
     }
   }
 }
 ```
 
  <!-- There's another option, "env" which allows you to define configurations for different environments, so you can apply different settings for your "test", "dev", "prod" environments for example. Babel will apply the basic configuration first then override any settings specified in the environment configuration. --> 
-
----
-### Polyfills
-
-+ Polyfills are pieces of code used to add missing functionality
-+ Some modern features aren't available in older versions
-+ **core-js** to import polyfills (**@babel/polyfill** is deprecated)
-+ https://github.com/zloirock/core-js
-
-<!-- Polyfills are basically pieces of JavaScript code. Since some relatively newer features like Promises and certain array functions weren't available in older versions, that functionality needs to be provided since transpiling it won't make that feature available in environments that don't natively support it. So overall, Babel provides support across different environments through a combination of transpilation, which deals with syntax changes, and polyfilling, which provides missing functionality for features. To use the polyfills, it's recommended to import features directly from the core-js library which is open source since @babel/polyfill is now deprecated -->
 
 ---
 ### Creating a custom plugin
@@ -360,6 +361,7 @@ myLogger('Hello, World!');
 // Logging: Hello, World!
 ```
 
+<!-- So first I will walkthrough a simple plugin implementation replacing all console.log statements to use a custom logging function. The goal is to just help you familiarise with how you would go about writing a plugin using the provided utilities and ASTExplorer to help navigate that process. -->
 ---
 ### Writing a plugin (pt. 1)
 
@@ -377,7 +379,7 @@ function loggerPlugin({ types }) {}
 export default myPlugin;
 ```
 
-<!-- So a plugin is simply just a function and it will take in a babel object as the parameter. One of the properties on it is types and it's the only one we will need, it contains utilities for working with AST nodes such as creating new instances of nodes or boolean functions for checking types of nodes. -->
+<!-- So a plugin is simply just a function and it will take in a babel object as the parameter. One of the properties on it is types and it's the only one we will need, it contains utilities for working with the AST such as creating new instances of nodes or inspecting the type of a node -->
 ---
 ### Writing a plugin (pt. 2)
 
@@ -400,7 +402,7 @@ function loggerPlugin({ types }) {
 
 <!-- In our use case, we want to replace each console.log call with our own logger function. To apply this transformation, we need to take a look at the AST to find out what type of node to manipulate and how to do that. We can use a couple tools to find out that information, the first is the parse function from the babel/parser package and the other is AST explorer which uses the same implementation. -->
 ---
-### Target node to visit
+### Identify node target
 
 + CallExpression node (callee, arguments)
 + Create a visitor function for CallExpression
