@@ -77,7 +77,7 @@ style: |
 });
 ```
 
-<!-- Babel is a toolchain primarily for converting ES6+ code into ES5 code to ensure backwards compatibility. So in the basic example arrow functions aren't a feature of ES6 which is 2015, but it's just syntactic sugar for a function declaration and it provides the same functionality. It's also useful as a general refactoring tool if you need to adhere to certain coding styles or make use of new features, you can apply different types of transformations to your codebase. -->
+<!-- Babel is a toolchain primarily for converting ES6+ code into ES5 code to ensure modern JavaScript features are backwards compatible in older browsers. So, as a basic example, arrow functions are a feature of ES6, but it's essentially just syntactic sugar for a regular function so Babel can transform the syntax but achieve the same functionality. With custom plugins, it can also be a useful refactoring tool if you need to apply some changes throughout your codebase. It might be easier to use a regex for a search and replace for small tasks, but for larger tasks, using a plugin, you have the context of the different code elements and the reliability of applying complex transformations whereas regex is just limited to simple text substitutions. And this custom plugin can be reuseable and integrated with your current build process easily. -->
 
 ---
 ### Brief History
@@ -245,13 +245,15 @@ function square(n) {
 
 <!-- Presets are just a set of plugins tailored for a specific work environment, it saves you the hassle of configuring multiple specific plugins. And unlike plugins, they're applied right to left instead. If both presets and plugins are specified, the plugins are applied first. Similarly to plugins, in the babel configuration file, you can provide the name of the preset and Babel will check node_modules to see if it's installed. You can also provide the path to a custom preset if you've created one. And similar to plugins, you can also provide options to a plugin but it also needs to be within another array. -->
 ---
-### Official presets
+### Common presets
 
 + **@babel/preset-env**
+  
+  + Deprecated: **@babel/preset-es2015**, **2016**, **2017**
 + **@babel/preset-typescript**
 + **@babel/preset-react**
 
-<!-- These are some of the more common presets, preset-env is a smart preset which can dynamically determine which plugins and polyfills are needed for transpiling based off the target environment. So it saves you time by not needing to micromanage transforms and reduce your bundle size. Then you got the typescript and react presets as well which is self-explana tory. -->
+<!-- These are some of the more common presets, preset-env is a smart preset which can dynamically determine which plugins and polyfills are needed for transpiling based off the target environment. So it saves you time by not needing to micromanage transforms and reduce your bundle size. Before this, you had individual presets for each version of JavaScript but they're deprecated now in favour of using preset-env. Then you got the typescript and react presets as well which well, provide support for typescript and react. -->
 ---
 <style scoped>
   code {
@@ -312,15 +314,33 @@ module.exports = () => ({
 <!-- Polyfills add missing functionality in environments that lack support for certain modern JavaScript features. Since some relatively newer features like Promises and certain array methods weren't available in older versions, that functionality needs to be provided since transpiling it won't make that feature available in environments that don't natively support it. So overall, Babel provides support across different environments through a combination of transpilation, which deals with syntax changes, and polyfilling, which provides missing functionality for features. As of the latest version of Babel, the babel/polyfill package has been deprecated in favour of using the corejs library to include polyfills you only need which can reduce bundle size. -->
 
 ---
+### Using polyfills
+
++ `npm install core-js`
+
+```JSON
+{
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "useBuiltIns": "usage",
+        "corejs": 3
+      }
+    ]
+  ]
+}
+```
+<!-- We mentioned before preset-env can dynamically choose which plugins to use, that same concept can be applied to polyfills. So to import polyfills from corejs, you need to install the package first. Then you can configure your babel.json to enable options for preset-env to specify useBuiltIns which enables the preset to add direct references to the corejs modules, and the corejs version itself. Without explicitly setting these, polyfills won't be imported into your transpiled code. -->
+---
 ### Some other configuration options
 
 + **ignore**: Files / directories to be excluded
-+ **include**: Files / directories to be included
 + **comments**: Include comments in output (**true**, **false**)
 + **compact**: Omit newlines and whitespace (**auto**, **false**, **true**)
 + **minified**: Applies **compact**, shortens some statements / expressions
 
-<!-- "ignore" specifies files / directories to not be transpiled, the option "include" does the opposite. "comments" is a boolean option with the default being true, it just determines whether the output contains any comments. In the AST, the comments will appear as properties on nodes but they aren't treated as nodes since the AST is only concerned with semantic details during parsing. "compact" removes newlines and whitespace to reduce the size of the output. If you set the value to auto, it applies compacting if there is more than 500,000 characters of code. "env" allows you to define configurations for different environments, so you could specify an environment for "test", "dev", "prod" or anything really. Babel will apply the basic configuration first then override any settings specified in the environment configuration. "minified" applies the "compact" option and may shorten some statements and expressions. So for example, removing block-end semicolons or if you're using the new keyword to create an object with no parameters, it will omit those parentheses. -->
+<!-- "ignore" specifies files / directories to not be transpiled. "comments" is a boolean option with the default being true, it just determines whether the output contains any comments. In the AST, the comments will appear as properties on nodes but they aren't treated as nodes since the AST is only concerned with semantic details during parsing. "compact" removes newlines and whitespace to reduce the size of the output. If you set the value to auto, it applies compacting if there is more than 500,000 characters of code. "minified" applies the "compact" option and may shorten some statements and expressions. So for example, removing block-end semicolons or if you're using the new keyword to create an object with no parameters, it will omit those parentheses. -->
 
 ---
 <style scoped>
@@ -339,13 +359,14 @@ module.exports = () => ({
   "presets": ["@babel/preset-env"],
   "env": {
     "prod": {
-      "minified": true
+      "minified": true,
+      "comments": false
     }
   }
 }
 ```
 
- <!-- There's another option, "env" which allows you to define configurations for different environments, so you can apply different settings for your "test", "dev", "prod" environments for example. Babel will apply the basic configuration first then override any settings specified in the environment configuration. --> 
+ <!-- "env" allows you to define configurations for different environments, so you could specify an environment for "test", "dev", "prod" or anything really. Babel will apply the basic configuration first then override any settings specified in the environment configuration. --> 
 
 ---
 ### Creating a custom plugin
@@ -354,14 +375,12 @@ module.exports = () => ({
 
 ```JavaScript
 console.log('Hello, World!');
-// Hello, World!
 ```
 ```JavaScript
 myLogger('Hello, World!');
-// Logging: Hello, World!
 ```
 
-<!-- So first I will walkthrough a simple plugin implementation replacing all console.log statements to use a custom logging function. The goal is to just help you familiarise with how you would go about writing a plugin using the provided utilities and ASTExplorer to help navigate that process. -->
+<!-- So first I will walkthrough a simple plugin implementation replacing all console.log statements to use a custom logging function, just a basic syntax transformation. The goal is to just help you familiarise with how you would go about writing a plugin using the provided utilities and ASTExplorer to help navigate that process. -->
 ---
 ### Writing a plugin (pt. 1)
 
@@ -370,13 +389,9 @@ myLogger('Hello, World!');
 + https://babeljs.io/docs/babel-types
 
 ```JavaScript
-function loggerPlugin(babel) {}
-```
-```JavaScript
-function loggerPlugin({ types }) {}
-```
-```JavaScript
-export default myPlugin;
+module.exports = function loggerPlugin({ types }) {
+  ...
+}
 ```
 
 <!-- So a plugin is simply just a function and it will take in a babel object as the parameter. One of the properties on it is types and it's the only one we will need, it contains utilities for working with the AST such as creating new instances of nodes or inspecting the type of a node -->
@@ -426,16 +441,17 @@ function loggerPlugin({ types }) {
 
 ```JavaScript
 1  CallExpression(path) {
-2    if (
-3         types.isMemberExpression(path.node.callee) &&
-4         path.node.callee.object.name === 'console' &&
-5         path.node.callee.property.name === 'log'
-6       )
-7    {} 
-8  }
+2    const { node } = path;
+3    if (
+4         types.isMemberExpression(node.callee) &&
+5         node.callee.object.name === 'console' &&
+6         node.callee.property.name === 'log'
+7       )
+8    {} 
+9  }
 ```
 
-<!-- So we can begin looking at the implementation for this plugin, we only want to apply our transformation when we visit a CallExpression node, or more specifically when it has a MemberExpression type of callee. So we can call isMemberExpression on the types object and pass in the callee, remember that path.node references the currently visited node which is the CallExpression, and it has the properties callee and arguments on it. So if the callee is of type MemberExpression, we can safely check if the callee's object and property fields are console log, if they are then we apply the transformation logic within the IF block. -->
+<!-- So we can begin looking at the implementation for this plugin, we only want to apply our transformation when we visit a CallExpression node, or more specifically when it has a MemberExpression type of callee. So we can call isMemberExpression on the types object and pass in the callee, remember that node references the currently visited node which is the CallExpression, and it has the properties callee and arguments on it. So if the callee is of type MemberExpression, we can safely check if the callee's object and property fields are console and log, if they are then we apply the transformation logic within the IF block. -->
 ---
 ### Implementation (pt. 2)
 
@@ -443,16 +459,17 @@ function loggerPlugin({ types }) {
 
 ```JavaScript
 1   CallExpression(path) {
-2     if (...)
-3     {
-4       const newCallee = types.identifier('customLogger');
-5       const newCallExpression = types.callExpression(
-6          newCallee,
-7          path.node.arguments
-8       );
-9       path.replaceWith(newCallExpression);
-10    } 
-11  }
+2     const { node } = path;
+3     if (...)
+4     {
+5       const newCallee = types.identifier('customLogger');
+6       const newCallExpression = types.callExpression(
+7          newCallee,
+8          node.arguments
+9       );
+10      path.replaceWith(newCallExpression);
+11    } 
+12  }
 ```
 
 <!-- We can use the replaceWith method on the path object to replace our CallExpression for console log with a new CallExpression node for custom logger. So when the modified AST is converted back into code, it should have replaced all the console.logs with customLogger. Looking at the documentation, types.callExpression takes in a callee node and an array of arguments. We can reuse the arguments because they don't change, we just need to create a new Identifier callee node just like we saw in AST explorer. -->
@@ -476,8 +493,8 @@ function loggerPlugin({ types }) {
 + The user can set custom options **prefix** and **skipPrefixed**
 + Setup:
 
-  + `git clone https://github.com/Khai-Yiu/babel-workshop.git`
-  + `cd babel-workshop`
+  + `git clone https://github.com/Khai-Yiu/babel-plugin-hands-on.git`
+  + `cd babel-plugin-hands-on`
   + `npm i`
   + `npm run test:watch`
   

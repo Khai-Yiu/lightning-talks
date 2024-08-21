@@ -1,5 +1,16 @@
 {
-    "presets": ["@babel/preset-env"],
+    "presets": [
+        [
+            "@babel/preset-env",
+            {
+                "targets": {
+                    "chrome": "1"
+                },
+                "useBuiltIns": "usage",
+                "corejs": 3
+            }
+        ]
+    ],
     "env": {
         "prod": {
             "minified": true,
